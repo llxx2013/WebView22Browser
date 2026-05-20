@@ -5,12 +5,12 @@ on:
     branches: [main]
     paths-ignore:
       - '**.md'
-      - 'docs/**'
+      - 'doc/**'
   pull_request:
     branches: [main]
     paths-ignore:
       - '**.md'
-      - 'docs/**'
+      - 'doc/**'
 
 jobs:
   build-test:
