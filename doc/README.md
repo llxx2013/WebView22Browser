@@ -41,3 +41,6 @@
 | [development/contributing.md](development/contributing.md) | 代码风格、格式化与文档变更约定 |
 | [development/testing.md](development/testing.md) | 单元测试策略与覆盖范围 |
 | [development/ci-and-release.md](development/ci-and-release.md) | CI、发布、Dependabot 与 CodeQL |
+| [development/alpha-wrap-up.md](development/alpha-wrap-up.md) | Alpha 收尾：现状、架构建议、风险与 Sprint 计划 |
+| [development/alpha-known-limitations.md](development/alpha-known-limitations.md) | Alpha 已知限制（Release Notes 草稿） |
+| [development/alpha-s0-acceptance.md](development/alpha-s0-acceptance.md) | S0 验收记录与勾选表 |
