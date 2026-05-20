@@ -1,0 +1,47 @@
+---
+description: 修改 C# 后必须运行 dotnet format，与 CI Verify formatting 一致
+globs: **/*.cs
+alwaysApply: true
+---
+
+# dotnet format（CI 门禁）
+
+本仓库 CI（`.github/workflows/ci.yml`）在 Build 之前会执行 **Verify formatting**。未通过会导致 push/PR 失败。
+
+## 何时必须执行
+
+在以下情况**完成回复之前**，必须运行 format 检查（不要只改文件就结束）：
+
+- 新增、修改或删除任何 `*.cs` 文件
+- 重构、修 bug、补测试等涉及 C# 源码的任务
+- 合并分支后若怀疑存在格式差异
+
+仅改 `*.md`、`doc/**` 等 CI 忽略路径时，可跳过。
+
+## 必做步骤（按顺序）
+
+1. **自动修复**（有改动时写入工作区）：
+
+   ```bash
+   dotnet format WebView22Browser.sln
+   ```
+
+2. **与 CI 相同校验**（必须通过，exit code 0）：
+
+   ```bash
+   dotnet format WebView22Browser.sln --verify-no-changes
+   ```
+
+3. 若 verify 失败：根据输出修复后重复步骤 1–2，直到通过。
+
+首次在本机格式化前，若需工具链：`dotnet tool restore`（与 CI 一致）。
+
+## 常见问题
+
+- **FINALNEWLINE**：文件末尾多了空行（`Delete 2 characters`）。用 `dotnet format` 修复，不要手改多个文件。
+- **不要**在 verify 失败时改 CI workflow 来绕过检查。
+- format 通过后再 `dotnet build` / `dotnet test`（可选但推荐）。
+
+## 交付前自检
+
+向用户汇报“已完成”时，应已确认 `--verify-no-changes` 通过；若仍有未提交的 format 修复，在回复中说明需提交的文件。
