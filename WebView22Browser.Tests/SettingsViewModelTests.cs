@@ -123,7 +123,9 @@ public class SettingsViewModelTests
             applier,
             new FakeDownloadHistoryStore(),
             browsingStore,
-            new BrowsingHistoryService(browsingStore, options));
+            new BrowsingHistoryService(browsingStore, options),
+            new FakeWebView2EnvironmentAccessor(),
+            new BrowsingDataClearService());
     }
 
     private sealed class TrackingUserSettingsStore : IUserSettingsStore

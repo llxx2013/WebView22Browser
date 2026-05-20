@@ -6,7 +6,7 @@ using WebView22Browser.Core;
 
 namespace WebView22Browser.App.Services;
 
-public sealed class WebView2EnvironmentService
+public sealed class WebView2EnvironmentService : IWebView2EnvironmentAccessor
 {
     private readonly BrowserOptions _options;
     private readonly Lazy<Task<CoreWebView2Environment>> _environment;
@@ -20,6 +20,12 @@ public sealed class WebView2EnvironmentService
     public string UserDataFolder => _options.GetUserDataFolder();
 
     public Task<CoreWebView2Environment> GetAsync() => _environment.Value;
+
+    public async Task<string> GetBrowserVersionStringAsync(CancellationToken cancellationToken = default)
+    {
+        var environment = await GetAsync().ConfigureAwait(false);
+        return environment.BrowserVersionString;
+    }
 
     private async Task<CoreWebView2Environment> CreateEnvironmentAsync()
     {

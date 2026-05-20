@@ -15,6 +15,7 @@ namespace WebView22Browser.App.ViewModels;
 public partial class MainViewModel : ObservableObject, ITabHostCallbacks
 {
     private const string WindowTitleSuffix = " - WebView2 Browser";
+    private const int RecommendedMaxOpenTabs = 10;
 
     private readonly BrowserOptions _options;
     private readonly NavigationService _navigationService;
@@ -46,6 +47,7 @@ public partial class MainViewModel : ObservableObject, ITabHostCallbacks
         History = history;
         Settings = settings;
         Tabs = new ObservableCollection<BrowserTabViewModel>();
+        Tabs.CollectionChanged += (_, _) => UpdateTabCountWarning();
         History.PropertyChanged += OnOverlayPagePropertyChanged;
         Settings.PropertyChanged += OnOverlayPagePropertyChanged;
         Downloads.PropertyChanged += (_, e) =>
@@ -82,6 +84,9 @@ public partial class MainViewModel : ObservableObject, ITabHostCallbacks
 
     [ObservableProperty]
     private string _statusMessage = string.Empty;
+
+    [ObservableProperty]
+    private string _tabCountWarning = string.Empty;
 
     [ObservableProperty]
     private string _windowTitle = "WebView2 Browser";
@@ -147,6 +152,7 @@ public partial class MainViewModel : ObservableObject, ITabHostCallbacks
         SelectedTab = selected ?? Tabs.FirstOrDefault();
         UpdateTabSelection();
         UpdateWindowTitle();
+        UpdateTabCountWarning();
     }
 
     private string ResolveCurrentAddress(TabSessionSnapshot snap)
@@ -181,7 +187,7 @@ public partial class MainViewModel : ObservableObject, ITabHostCallbacks
         };
     }
 
-    public BrowserTabViewModel OpenNewTab(string? uri = null)
+    public BrowserTabViewModel OpenNewTab(string? uri = null, bool activate = true)
     {
         var tab = new BrowserTabViewModel
         {
@@ -191,11 +197,22 @@ public partial class MainViewModel : ObservableObject, ITabHostCallbacks
 
         tab.TouchActivity();
         Tabs.Add(tab);
-        SelectedTab = tab;
-        UpdateTabSelection();
+        if (activate)
+            SelectedTab = tab;
+        else
+            UpdateTabSelection();
+
         NewTabRequested?.Invoke(tab, uri ?? _options.HomeUrl);
         UpdateWindowTitle();
         return tab;
+    }
+
+    private void UpdateTabCountWarning()
+    {
+        var count = Tabs.Count;
+        TabCountWarning = count > RecommendedMaxOpenTabs
+            ? $"建议同时打开不超过 {RecommendedMaxOpenTabs} 个标签（当前 {count} 个）"
+            : string.Empty;
     }
 
     partial void OnSelectedTabChanged(BrowserTabViewModel? value)

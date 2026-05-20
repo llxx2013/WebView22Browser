@@ -240,6 +240,10 @@
 
             <StatusBar DockPanel.Dock="Bottom">
                 <StatusBarItem>
+                    <TextBlock Text="{Binding TabCountWarning}"
+                               Foreground="#C06000"/>
+                </StatusBarItem>
+                <StatusBarItem>
                     <TextBlock Text="{Binding StatusMessage}"/>
                 </StatusBarItem>
             </StatusBar>

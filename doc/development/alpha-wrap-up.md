@@ -281,12 +281,12 @@ flowchart LR
 
 ### S3
 
-- [ ] 关于 / 版本
-- [ ] 标签数提示
-- [ ] 清除浏览数据
-- [ ] `GM_openInTab` `active: false`
-- [ ] 刷新全部标签快捷键
-- [ ] `CHANGELOG` / Release Notes
+- [x] 关于 / 版本
+- [x] 标签数提示
+- [x] 清除浏览数据
+- [x] `GM_openInTab` `active: false`
+- [x] 刷新全部标签快捷键
+- [x] `CHANGELOG` / Release Notes
 - [ ] 标签 `v0.1.0-alpha` + Release 产物
 
 ### 门禁
@@ -303,3 +303,4 @@ flowchart LR
 | 2026-05-20 | S0 完成：限制清单、验收记录、勾选表更新 |
 | 2026-05-20 | S1 完成：`JsonFileStoreBase`、原子 JSON 写、权限/会话/GM 失败状态栏提示 |
 | 2026-05-20 | S2 完成：`ITabWebViewHost`/`ITabHostCallbacks`、`FakeTabWebViewHost`、`TabSleepCycleProcessor` 单测、Linux 全绿 |
+| 2026-05-20 | S3 完成（除标签发布）：关于/版本、标签提示、清除浏览数据、`GM_openInTab`、`Ctrl+Shift+R`、`CHANGELOG.md` |

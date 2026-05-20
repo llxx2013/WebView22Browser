@@ -79,7 +79,9 @@ public class MainViewModelTests
             new FakeRuntimeBrowserSettingsApplier(),
             new FakeDownloadHistoryStore(),
             browsingStore,
-            new BrowsingHistoryService(browsingStore, options));
+            new BrowsingHistoryService(browsingStore, options),
+            new FakeWebView2EnvironmentAccessor(),
+            new BrowsingDataClearService());
     }
 
     private static async Task<JsonTabSessionStore> CreateSessionStoreWithAsync(TabSessionFile session)
@@ -100,6 +102,29 @@ public class MainViewModelTests
         Assert.Single(vm.Tabs);
         Assert.Same(tab, vm.SelectedTab);
         Assert.Equal("https://example.com", tab.InitialUri);
+    }
+
+    [Fact]
+    public void OpenNewTab_ActivateFalse_AddsTabWithoutSelectingIt()
+    {
+        var vm = CreateSut();
+        var first = vm.OpenNewTab("https://a.com");
+        var background = vm.OpenNewTab("https://b.com", activate: false);
+
+        Assert.Equal(2, vm.Tabs.Count);
+        Assert.Same(first, vm.SelectedTab);
+        Assert.NotSame(background, vm.SelectedTab);
+    }
+
+    [Fact]
+    public void TabCountWarning_ShowsWhenMoreThanTenTabs()
+    {
+        var vm = CreateSut();
+        for (var i = 0; i < 11; i++)
+            vm.OpenNewTab($"https://example{i}.com");
+
+        Assert.Contains("10", vm.TabCountWarning);
+        Assert.Contains("11", vm.TabCountWarning);
     }
 
     [Fact]

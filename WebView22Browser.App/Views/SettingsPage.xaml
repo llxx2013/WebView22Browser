@@ -132,7 +132,21 @@
                         </Grid>
                     </GroupBox>
 
-                    <GroupBox Header="数据位置（只读）" Padding="12">
+                    <GroupBox Header="隐私" Margin="0,0,0,12" Padding="12">
+                        <StackPanel>
+                            <TextBlock Text="清除 WebView2 Profile 中的 Cookie、磁盘缓存与浏览/下载历史。"
+                                       TextWrapping="Wrap"
+                                       Foreground="Gray"
+                                       FontSize="11"
+                                       Margin="0,0,0,8"/>
+                            <Button Content="清除浏览数据"
+                                    HorizontalAlignment="Left"
+                                    Padding="8,4"
+                                    Command="{Binding ClearBrowsingDataCommand}"/>
+                        </StackPanel>
+                    </GroupBox>
+
+                    <GroupBox Header="数据位置（只读）" Margin="0,0,0,12" Padding="12">
                         <ItemsControl ItemsSource="{Binding DataPaths}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="{x:Type vm:SettingsPathItemViewModel}">
@@ -162,6 +176,21 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
+                    </GroupBox>
+
+                    <GroupBox Header="关于" Padding="12">
+                        <StackPanel>
+                            <TextBlock Text="应用程序版本"/>
+                            <TextBlock Text="{Binding AppVersion}"
+                                       Foreground="Gray"
+                                       FontSize="11"
+                                       Margin="0,4,0,12"/>
+                            <TextBlock Text="WebView2 Runtime 版本"/>
+                            <TextBlock Text="{Binding WebView2RuntimeVersion}"
+                                       Foreground="Gray"
+                                       FontSize="11"
+                                       TextWrapping="Wrap"/>
+                        </StackPanel>
                     </GroupBox>
                 </StackPanel>
             </ScrollViewer>

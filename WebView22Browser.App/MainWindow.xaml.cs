@@ -27,6 +27,7 @@ public partial class MainWindow : Window
     private readonly ITabHostService _tabHostService;
     private readonly PermissionMemoryStore _permissionStore;
     private readonly BrowserExtensionService _extensionService;
+    private readonly BrowsingDataClearService _browsingDataClearService;
     private readonly UserScriptService _userScriptService;
     private readonly UserScriptBridge _userScriptBridge;
     private readonly TabSleepService _tabSleepService;
@@ -44,6 +45,7 @@ public partial class MainWindow : Window
         ITabHostService tabHostService,
         PermissionMemoryStore permissionStore,
         BrowserExtensionService extensionService,
+        BrowsingDataClearService browsingDataClearService,
         UserScriptService userScriptService,
         UserScriptBridge userScriptBridge,
         TabSleepService tabSleepService,
@@ -57,6 +59,7 @@ public partial class MainWindow : Window
         _tabHostService = tabHostService;
         _permissionStore = permissionStore;
         _extensionService = extensionService;
+        _browsingDataClearService = browsingDataClearService;
         _userScriptService = userScriptService;
         _userScriptBridge = userScriptBridge;
         _tabSleepService = tabSleepService;
@@ -184,6 +187,14 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift) && e.Key == Key.R
+            && _viewModel.IsBrowserContentVisible)
+        {
+            _viewModel.UserScripts.ReloadAllOpenTabsCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+
         if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.OemComma)
         {
             _viewModel.Settings.TogglePageCommand.Execute(null);
@@ -264,6 +275,8 @@ public partial class MainWindow : Window
     {
         if (sender is TabWebViewHost host)
             host.ProfileReady -= OnHostProfileReady;
+
+        _browsingDataClearService.SetProfile(profile);
 
         if (Interlocked.CompareExchange(ref _extensionsInitialized, 1, 0) != 0)
             return;

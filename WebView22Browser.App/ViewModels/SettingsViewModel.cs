@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.IO;
-
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -14,6 +13,8 @@ namespace WebView22Browser.App.ViewModels;
 
 public partial class SettingsViewModel : ObservableObject
 {
+    private const string AppVersionLabel = "0.1.0-alpha";
+
     private readonly BrowserOptions _options;
     private readonly BrowserAppConfig _appConfig;
     private readonly IUserSettingsStore _settingsStore;
@@ -22,6 +23,8 @@ public partial class SettingsViewModel : ObservableObject
     private readonly IDownloadHistoryStore _downloadHistoryStore;
     private readonly IBrowsingHistoryStore _browsingHistoryStore;
     private readonly IBrowsingHistoryService _browsingHistoryService;
+    private readonly IWebView2EnvironmentAccessor _environmentAccessor;
+    private readonly BrowsingDataClearService _browsingDataClearService;
 
     public SettingsViewModel(
         BrowserOptions options,
@@ -31,7 +34,9 @@ public partial class SettingsViewModel : ObservableObject
         IRuntimeBrowserSettingsApplier settingsApplier,
         IDownloadHistoryStore downloadHistoryStore,
         IBrowsingHistoryStore browsingHistoryStore,
-        IBrowsingHistoryService browsingHistoryService)
+        IBrowsingHistoryService browsingHistoryService,
+        IWebView2EnvironmentAccessor environmentAccessor,
+        BrowsingDataClearService browsingDataClearService)
     {
         _options = options;
         _appConfig = appConfig;
@@ -41,6 +46,10 @@ public partial class SettingsViewModel : ObservableObject
         _downloadHistoryStore = downloadHistoryStore;
         _browsingHistoryStore = browsingHistoryStore;
         _browsingHistoryService = browsingHistoryService;
+        _environmentAccessor = environmentAccessor;
+        _browsingDataClearService = browsingDataClearService;
+        AppVersion = AppVersionLabel;
+        WebView2RuntimeVersion = "打开设置页后加载";
         LoadFromOptions();
         RefreshDataPaths();
     }
@@ -89,6 +98,12 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private string? _statusMessage;
 
+    [ObservableProperty]
+    private string _appVersion = string.Empty;
+
+    [ObservableProperty]
+    private string _webView2RuntimeVersion = string.Empty;
+
     partial void OnIsPageOpenChanged(bool value)
     {
         if (value)
@@ -96,6 +111,7 @@ public partial class SettingsViewModel : ObservableObject
             StatusMessage = null;
             LoadFromOptions();
             RefreshDataPaths();
+            _ = LoadWebView2RuntimeVersionAsync();
         }
     }
 
@@ -150,6 +166,34 @@ public partial class SettingsViewModel : ObservableObject
         await _browsingHistoryStore.SaveAsync();
         _browsingHistoryService.NotifyHistoryChanged();
         StatusMessage = "已恢复默认设置";
+    }
+
+    [RelayCommand]
+    private async Task ClearBrowsingDataAsync()
+    {
+        if (!_dialogService.Confirm(
+                "将清除 Cookie、缓存、WebView2 浏览与下载历史等用户数据，不会删除收藏夹、用户脚本、扩展注册表等侧栏 JSON 数据。是否继续？",
+                "清除浏览数据"))
+        {
+            return;
+        }
+
+        if (!_browsingDataClearService.IsReady)
+        {
+            _dialogService.ShowWarning("WebView2 尚未就绪，请打开至少一个标签页后再试。", "清除浏览数据");
+            return;
+        }
+
+        try
+        {
+            await _browsingDataClearService.ClearAsync();
+            StatusMessage = "浏览数据已清除";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = null;
+            _dialogService.ShowError($"清除浏览数据失败：{ex.Message}", "清除浏览数据");
+        }
     }
 
     [RelayCommand]
@@ -255,4 +299,18 @@ public partial class SettingsViewModel : ObservableObject
         ];
         OnPropertyChanged(nameof(DataPaths));
     }
+
+    private async Task LoadWebView2RuntimeVersionAsync()
+    {
+        WebView2RuntimeVersion = "加载中…";
+        try
+        {
+            WebView2RuntimeVersion = await _environmentAccessor.GetBrowserVersionStringAsync();
+        }
+        catch (Exception ex)
+        {
+            WebView2RuntimeVersion = $"无法获取（{ex.Message}）";
+        }
+    }
+
 }
