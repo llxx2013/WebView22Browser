@@ -5,6 +5,7 @@ namespace WebView22Browser.Tests.Fixtures;
 
 /// <summary>
 /// Trimmed translate.user.js patterns for offline bootstrap compatibility tests (no CDN).
+/// Upstream: <see href="https://github.com/syhyz1990/translate">syhyz1990/translate</see> (MIT License).
 /// </summary>
 internal static class TranslateCompatFixture
 {

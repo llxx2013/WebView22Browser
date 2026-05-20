@@ -25,7 +25,7 @@
 
 ## translate 手动验收
 
-依据 [user-scripts.md § translate 手动验收清单](../features/user-scripts.md#translate-手动验收清单)，脚本：[test-scripts/translate/translate.user.js](../../test-scripts/translate/translate.user.js)。
+依据 [user-scripts.md § translate 手动验收清单](../features/user-scripts.md#translate-手动验收清单)。脚本：上游 [syhyz1990/translate](https://github.com/syhyz1990/translate) 的 [`translate.user.js`](https://github.com/syhyz1990/translate/blob/main/translate.user.js)（MIT License）。
 
 | # | 步骤 | 状态 | 备注 |
 | --- | --- | --- | --- |

@@ -102,19 +102,19 @@ URL 匹配语义与 [UserScriptUrlMatcher](../WebView22Browser.Core/Services/Use
 
 ## translate 手动验收清单
 
+**脚本来源**：上游油猴脚本「超级翻译助手」[syhyz1990/translate](https://github.com/syhyz1990/translate)（MIT License）。手动验收使用上游 [`translate.user.js`](https://github.com/syhyz1990/translate/blob/main/translate.user.js)（可 [Raw 下载](https://raw.githubusercontent.com/syhyz1990/translate/main/translate.user.js) 后导入）；离线自动化见 `TranslateScriptCompatibilityTests`（仓库内裁剪 fixture，不访问外网）。
+
 验收通过时的参考界面（侧栏「超级翻译助手」、`Requires 3 · Resources 1 · 缓存就绪`，选中文字后 F9 弹出 SweetAlert2 翻译窗）：
 
 ![translate 脚本手动验收示例](../images/user-scripts-translate.png)
 
-基于仓库内 [test-scripts/translate/translate.user.js](../../test-scripts/translate/translate.user.js)（需联网预取 CDN 依赖）：
+以下步骤（需联网预取 CDN 依赖）：
 
-1. **导入**：侧栏「导入 .user.js…」选择 translate；确认对话框无阻断性错误后完成导入；侧栏显示 `Requires 3 · Resources 1 · 缓存就绪`（或重试「重载」直至就绪）。
+1. **导入**：将上游 `translate.user.js` 保存到本地后，侧栏「导入 .user.js…」选择该文件；确认对话框无阻断性错误后完成导入；侧栏显示 `Requires 3 · Resources 1 · 缓存就绪`（或重试「重载」直至就绪）。
 2. **刷新页面**：打开 `https://www.bing.com` 或 `https://www.google.com` 顶层页，点击「刷新全部标签」或手动 F5。
 3. **脚本命令**：工具栏「脚本命令」应出现 4 条设置项（非灰色）；DevTools 控制台无 `Swal` / `GM_*` ReferenceError。
 4. **快捷键翻译**：选中英文单词，按 F9（或先在脚本命令中修改快捷键），应弹出 SweetAlert2 翻译窗并显示译文。
 5. **API 解析**：网络面板或脚本逻辑中翻译请求返回 `{ code: 200, data: ... }` 时能正常显示（依赖 `GM_xmlhttpRequest` 的 `responseType: 'json'`）。
-
-离线自动化见 `TranslateScriptCompatibilityTests`（裁剪 fixture，不访问外网）。
 
 ## 测试
 
