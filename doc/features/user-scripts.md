@@ -102,6 +102,10 @@ URL 匹配语义与 [UserScriptUrlMatcher](../WebView22Browser.Core/Services/Use
 
 ## translate 手动验收清单
 
+验收通过时的参考界面（侧栏「超级翻译助手」、`Requires 3 · Resources 1 · 缓存就绪`，选中文字后 F9 弹出 SweetAlert2 翻译窗）：
+
+![translate 脚本手动验收示例](../images/user-scripts-translate.png)
+
 基于仓库内 [test-scripts/translate/translate.user.js](../../test-scripts/translate/translate.user.js)（需联网预取 CDN 依赖）：
 
 1. **导入**：侧栏「导入 .user.js…」选择 translate；确认对话框无阻断性错误后完成导入；侧栏显示 `Requires 3 · Resources 1 · 缓存就绪`（或重试「重载」直至就绪）。

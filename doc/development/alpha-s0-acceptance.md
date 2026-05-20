@@ -32,7 +32,7 @@
 | 1 | 导入 translate；侧栏 `Requires 3 · Resources 1 · 缓存就绪` | 通过 | 人工确认 |
 | 2 | 打开 Bing/Google 顶层页并刷新标签 | 通过 | 人工确认 |
 | 3 | 「脚本命令」4 条设置项；控制台无 `Swal` / `GM_*` ReferenceError | 通过 | 人工确认 |
-| 4 | 选中英文按 F9，SweetAlert2 翻译窗显示译文 | 通过 | 人工确认 |
+| 4 | 选中英文按 F9，SweetAlert2 翻译窗显示译文 | 通过 | 见 [验收截图](../images/user-scripts-translate.png) |
 | 5 | `GM_xmlhttpRequest` + `responseType: 'json'` 解析 `{ code: 200, data }` | 待补测 | 部分通过批次未单独勾选；离线见 `TranslateScriptCompatibilityTests` |
 
 自动化（不访问外网）：`TranslateScriptCompatibilityTests` 在 CI 中持续回归裁剪 fixture。

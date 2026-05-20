@@ -34,7 +34,7 @@
 ### translate 回归
 
 - **自动化**：`TranslateScriptCompatibilityTests`（`Fixtures/TranslateCompatFixture.cs`，内联 GM / XHR / 菜单模式，不依赖外网）。
-- **手动**：见 [user-scripts.md § translate 手动验收清单](../features/user-scripts.md#translate-手动验收清单)。
+- **手动**：见 [user-scripts.md § translate 手动验收清单](../features/user-scripts.md#translate-手动验收清单)（含 [验收界面截图](../images/user-scripts-translate.png)）。
 
 ## 覆盖范围（按主题）
 

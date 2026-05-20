@@ -2,7 +2,7 @@
 
 基于 [Microsoft WebView2](https://developer.microsoft.com/microsoft-edge/webview2/) 的 WPF 多标签浏览器。采用 **MVVM** 与 **多项目分层**，通过 **Microsoft.Extensions.DependencyInjection** 装配，将可测试的核心逻辑与 WebView2 宿主解耦。
 
-> 🤖 **重要说明**：本项目由 AI 主导代码编写、代码审查与功能演进，旨在探索 AI 主导工程的边界，仓库全部内容（除本说明与 LICENSE 以外）由 AI 生成。
+> 🤖 **重要说明**：本项目由 AI 主导代码编写、代码审查与功能演进，旨在探索 AI 主导工程的边界，仓库全部文本内容（除本说明与 LICENSE 以外）由 AI 生成。
 
 ---
 
