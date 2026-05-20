@@ -1,29 +1,38 @@
+using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 
 using Microsoft.Web.WebView2.Core;
 
 using WebView22Browser.Core;
+using WebView22Browser.Core.Stores;
 
 namespace WebView22Browser.App.Services;
 
 public sealed class PermissionMemoryStore : IAsyncDisposable
 {
+    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+
     private readonly string _filePath;
     private readonly TimeSpan _flushDelay;
+    private readonly IBrowserStatusReporter? _statusReporter;
     private Dictionary<string, Dictionary<string, string>> _cache = new(StringComparer.OrdinalIgnoreCase);
     private bool _isDirty;
     private CancellationTokenSource? _flushCts;
     private readonly SemaphoreSlim _flushLock = new(1, 1);
     private int _flushCount;
 
-    public PermissionMemoryStore(BrowserOptions options, TimeSpan? flushDelay = null)
+    public PermissionMemoryStore(
+        BrowserOptions options,
+        TimeSpan? flushDelay = null,
+        IBrowserStatusReporter? statusReporter = null)
     {
         _filePath = Path.Combine(
             options.UserDataRoot ?? Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "WebView22Browser",
             "permissions.json");
         _flushDelay = flushDelay ?? TimeSpan.FromSeconds(3);
+        _statusReporter = statusReporter;
     }
 
     public int FlushCount => _flushCount;
@@ -86,14 +95,31 @@ public sealed class PermissionMemoryStore : IAsyncDisposable
             if (!_isDirty)
                 return;
 
-            var directory = Path.GetDirectoryName(_filePath);
-            if (!string.IsNullOrEmpty(directory))
-                Directory.CreateDirectory(directory);
+            Exception? lastError = null;
+            for (var attempt = 0; attempt < 2; attempt++)
+            {
+                try
+                {
+                    await JsonFileStoreBase.WriteAtomicAsync(_filePath, _cache, JsonOptions);
+                    _isDirty = false;
+                    _flushCount++;
+                    return;
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+                {
+                    lastError = ex;
+                    if (attempt == 0)
+                        await Task.Delay(50);
+                }
+                catch (Exception ex)
+                {
+                    lastError = ex;
+                    break;
+                }
+            }
 
-            await using var stream = File.Create(_filePath);
-            await JsonSerializer.SerializeAsync(stream, _cache, new JsonSerializerOptions { WriteIndented = true });
-            _isDirty = false;
-            _flushCount++;
+            if (lastError != null)
+                ReportFlushFailure(lastError);
         }
         finally
         {
@@ -118,11 +144,17 @@ public sealed class PermissionMemoryStore : IAsyncDisposable
             {
                 // ignored
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Dispose/IO race: leave _isDirty true for a later flush or DisposeAsync
+                ReportFlushFailure(ex);
             }
         }, token);
+    }
+
+    private void ReportFlushFailure(Exception ex)
+    {
+        Debug.WriteLine($"PermissionMemoryStore flush failed: {ex}");
+        _statusReporter?.Report("权限记忆保存失败，将在下次变更时重试。");
     }
 
     public async ValueTask DisposeAsync()

@@ -55,15 +55,7 @@ public sealed class JsonUserSettingsStore : IUserSettingsStore
 
     public async Task SaveAsync(BrowserSettingsDto settings, CancellationToken cancellationToken = default)
     {
-        var directory = Path.GetDirectoryName(_filePath);
-        if (!string.IsNullOrEmpty(directory))
-            Directory.CreateDirectory(directory);
-
-        var tempPath = _filePath + ".tmp";
-        await using (var stream = File.Create(tempPath))
-            await JsonSerializer.SerializeAsync(stream, settings, JsonOptions, cancellationToken);
-
-        File.Move(tempPath, _filePath, overwrite: true);
+        await JsonFileStoreBase.WriteAtomicAsync(_filePath, settings, JsonOptions, cancellationToken: cancellationToken);
         _current = settings;
     }
 

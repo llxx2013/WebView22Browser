@@ -12,6 +12,7 @@ internal static class TestServiceFactory
     public static UserScriptBridge CreateUserScriptBridge(IGmStorageStore gmStore) =>
         new(
             new FakeDialogService(),
+            NullBrowserStatusReporter.Instance,
             gmStore,
             new GmXhrMessageHandler(
                 new GmXhrService(new HttpClient(new HttpClientHandler { UseCookies = false })),

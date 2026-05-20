@@ -102,6 +102,7 @@ public partial class App : Application
         services.AddSingleton<IGmTabService>(sp => sp.GetRequiredService<WpfGmTabService>());
         services.AddSingleton<IGmClipboardService, WpfGmClipboardService>();
         services.AddSingleton<GmMenuCommandRegistry>();
+        services.AddSingleton<IBrowserStatusReporter, WpfBrowserStatusReporter>();
         services.AddSingleton<UserScriptBridge>();
         services.AddSingleton<UserScriptService>();
         services.AddSingleton<ExtensionManifestReader>();

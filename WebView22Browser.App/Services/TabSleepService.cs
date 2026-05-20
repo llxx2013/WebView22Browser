@@ -16,6 +16,7 @@ public sealed class TabSleepService : IRuntimeBrowserSettingsApplier, IDisposabl
     private readonly ITabHostService _tabHostService;
     private readonly ISystemPressureMonitor _pressureMonitor;
     private readonly ITabSessionStore _sessionStore;
+    private readonly IBrowserStatusReporter _statusReporter;
     private readonly BrowserOptions _options;
     private Dispatcher? _dispatcher;
     private DispatcherTimer? _timer;
@@ -29,12 +30,14 @@ public sealed class TabSleepService : IRuntimeBrowserSettingsApplier, IDisposabl
         ITabHostService tabHostService,
         ISystemPressureMonitor pressureMonitor,
         ITabSessionStore sessionStore,
+        IBrowserStatusReporter statusReporter,
         BrowserOptions options)
     {
         _mainViewModel = mainViewModel;
         _tabHostService = tabHostService;
         _pressureMonitor = pressureMonitor;
         _sessionStore = sessionStore;
+        _statusReporter = statusReporter;
         _options = options;
     }
 
@@ -111,6 +114,7 @@ public sealed class TabSleepService : IRuntimeBrowserSettingsApplier, IDisposabl
         catch (Exception ex)
         {
             Debug.WriteLine($"TabSleep flush failed: {ex}");
+            _statusReporter.Report("标签会话保存失败，部分状态可能未写入磁盘。");
         }
     }
 
@@ -221,6 +225,7 @@ public sealed class TabSleepService : IRuntimeBrowserSettingsApplier, IDisposabl
         catch (Exception ex)
         {
             Debug.WriteLine($"TabSleep tick failed: {ex}");
+            _statusReporter.Report("标签休眠检查失败，请查看调试输出。");
         }
     }
 

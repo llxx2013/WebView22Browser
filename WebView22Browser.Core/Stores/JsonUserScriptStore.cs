@@ -7,7 +7,7 @@ namespace WebView22Browser.Core.Stores;
 /// <summary>
 /// JSON-backed user script store. Thread-safe for concurrent reads/writes from the UI thread and async save/load.
 /// </summary>
-public sealed class JsonUserScriptStore : IUserScriptStore
+public sealed class JsonUserScriptStore : JsonFileStoreBase, IUserScriptStore
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -15,7 +15,6 @@ public sealed class JsonUserScriptStore : IUserScriptStore
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    private readonly string _filePath;
     private readonly object _sync = new();
     private readonly List<UserScriptEntry> _items = [];
 
@@ -25,8 +24,8 @@ public sealed class JsonUserScriptStore : IUserScriptStore
     }
 
     public JsonUserScriptStore(string filePath)
+        : base(filePath)
     {
-        _filePath = filePath;
     }
 
     public IReadOnlyList<UserScriptEntry> Items
@@ -42,11 +41,11 @@ public sealed class JsonUserScriptStore : IUserScriptStore
     {
         List<UserScriptEntry>? loaded = null;
 
-        if (File.Exists(_filePath))
+        if (File.Exists(FilePath))
         {
             try
             {
-                await using var stream = File.OpenRead(_filePath);
+                await using var stream = File.OpenRead(FilePath);
                 loaded = await JsonSerializer.DeserializeAsync<List<UserScriptEntry>>(stream, JsonOptions, cancellationToken);
             }
             catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
@@ -69,12 +68,7 @@ public sealed class JsonUserScriptStore : IUserScriptStore
         lock (_sync)
             snapshot = _items.ToList();
 
-        var directory = Path.GetDirectoryName(_filePath);
-        if (!string.IsNullOrEmpty(directory))
-            Directory.CreateDirectory(directory);
-
-        await using var stream = File.Create(_filePath);
-        await JsonSerializer.SerializeAsync(stream, snapshot, JsonOptions, cancellationToken);
+        await WriteAtomicAsync(snapshot, JsonOptions, cancellationToken);
     }
 
     public UserScriptEntry Add(UserScriptEntry entry)

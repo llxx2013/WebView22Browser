@@ -4,7 +4,7 @@ using WebView22Browser.Core.Models;
 
 namespace WebView22Browser.Core.Stores;
 
-public sealed class JsonExtensionSourceStore : IExtensionSourceStore
+public sealed class JsonExtensionSourceStore : JsonFileStoreBase, IExtensionSourceStore
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -12,7 +12,6 @@ public sealed class JsonExtensionSourceStore : IExtensionSourceStore
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    private readonly string _filePath;
     private readonly List<ExtensionSourceEntry> _items = [];
 
     public JsonExtensionSourceStore(BrowserOptions options)
@@ -21,8 +20,8 @@ public sealed class JsonExtensionSourceStore : IExtensionSourceStore
     }
 
     public JsonExtensionSourceStore(string filePath)
+        : base(filePath)
     {
-        _filePath = filePath;
     }
 
     public IReadOnlyList<ExtensionSourceEntry> Items => _items;
@@ -31,12 +30,12 @@ public sealed class JsonExtensionSourceStore : IExtensionSourceStore
     {
         _items.Clear();
 
-        if (!File.Exists(_filePath))
+        if (!File.Exists(FilePath))
             return;
 
         try
         {
-            await using var stream = File.OpenRead(_filePath);
+            await using var stream = File.OpenRead(FilePath);
             var loaded = await JsonSerializer.DeserializeAsync<List<ExtensionSourceEntry>>(stream, JsonOptions, cancellationToken);
             if (loaded != null)
                 _items.AddRange(loaded);
@@ -47,15 +46,8 @@ public sealed class JsonExtensionSourceStore : IExtensionSourceStore
         }
     }
 
-    public async Task SaveAsync(CancellationToken cancellationToken = default)
-    {
-        var directory = Path.GetDirectoryName(_filePath);
-        if (!string.IsNullOrEmpty(directory))
-            Directory.CreateDirectory(directory);
-
-        await using var stream = File.Create(_filePath);
-        await JsonSerializer.SerializeAsync(stream, _items, JsonOptions, cancellationToken);
-    }
+    public Task SaveAsync(CancellationToken cancellationToken = default) =>
+        WriteAtomicAsync(_items, JsonOptions, cancellationToken);
 
     public ExtensionSourceEntry Add(string folderPath, string? lastKnownExtensionId = null)
     {

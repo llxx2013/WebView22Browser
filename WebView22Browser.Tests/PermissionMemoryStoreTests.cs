@@ -2,6 +2,7 @@ using Microsoft.Web.WebView2.Core;
 
 using WebView22Browser.App.Services;
 using WebView22Browser.Core;
+using WebView22Browser.Tests.Fakes;
 
 namespace WebView22Browser.Tests;
 
@@ -50,6 +51,59 @@ public class PermissionMemoryStoreTests
         await store.DisposeAsync();
 
         await Task.Delay(100);
+    }
+
+    [Fact]
+    public async Task FlushAsync_WritesAtomically_NoTempFileLeft()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "wv2-perm-" + Guid.NewGuid());
+        var permPath = Path.Combine(root, "WebView22Browser", "permissions.json");
+        var store = new PermissionMemoryStore(new BrowserOptions { UserDataRoot = root }, TimeSpan.FromMinutes(5));
+        await store.SetAsync("https://example.com", CoreWebView2PermissionKind.Geolocation, CoreWebView2PermissionState.Allow);
+        await store.FlushAsync();
+
+        Assert.True(File.Exists(permPath));
+        Assert.False(File.Exists(permPath + ".tmp"));
+
+        Directory.Delete(root, recursive: true);
+    }
+
+    [Fact]
+    public async Task FlushAsync_WhenTargetIsDirectory_ReportsFailure()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "wv2-perm-" + Guid.NewGuid());
+        var permDir = Path.Combine(root, "WebView22Browser");
+        var permPath = Path.Combine(permDir, "permissions.json");
+        try
+        {
+            Directory.CreateDirectory(permDir);
+            await File.WriteAllTextAsync(permPath, "{}");
+
+            var reporter = new RecordingBrowserStatusReporter();
+            var store = new PermissionMemoryStore(
+                new BrowserOptions { UserDataRoot = root },
+                TimeSpan.FromMinutes(5),
+                reporter);
+            await store.SetAsync("https://example.com", CoreWebView2PermissionKind.Camera, CoreWebView2PermissionState.Allow);
+
+            File.Delete(permPath);
+            Directory.CreateDirectory(permPath);
+
+            await store.FlushAsync();
+
+            Assert.NotNull(reporter.LastMessage);
+            Assert.Contains("权限记忆保存失败", reporter.LastMessage, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(permPath))
+                Directory.Delete(permPath, recursive: true);
+            else if (File.Exists(permPath))
+                File.Delete(permPath);
+
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
     }
 
     [Fact]

@@ -161,8 +161,7 @@ public sealed class JsonGmStorageStore : IGmStorageStore
     {
         Directory.CreateDirectory(_rootDirectory);
         var path = GetFilePath(scriptId);
-        await using var stream = File.Create(path);
-        await JsonSerializer.SerializeAsync(stream, data, JsonOptions, cancellationToken);
+        await JsonFileStoreBase.WriteAtomicAsync(path, data, JsonOptions, cancellationToken: cancellationToken);
     }
 
     private void ValidateKey(string key)
