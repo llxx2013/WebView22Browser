@@ -40,8 +40,11 @@ public class JsonFileStoreBaseTests
             await Assert.ThrowsAnyAsync<Exception>(() =>
                 JsonFileStoreBase.WriteAtomicAsync(invalidDir, new SampleDto { Name = "broken" }, JsonOptions));
 
-            var reloaded = await JsonSerializer.DeserializeAsync<SampleDto>(File.OpenRead(path));
-            Assert.Equal("original", reloaded?.Name);
+            await using (var stream = File.OpenRead(path))
+            {
+                var reloaded = await JsonSerializer.DeserializeAsync<SampleDto>(stream);
+                Assert.Equal("original", reloaded?.Name);
+            }
         }
         finally
         {
