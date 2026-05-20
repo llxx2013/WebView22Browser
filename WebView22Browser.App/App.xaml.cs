@@ -1,7 +1,9 @@
 using System.Net.Http;
 using System.Windows;
+
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+
 using WebView22Browser.App.Services;
 using WebView22Browser.App.ViewModels;
 using WebView22Browser.Core;

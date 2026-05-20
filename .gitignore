@@ -32,3 +32,21 @@ packages/
 # Local configuration overrides
 appsettings.*.json
 !appsettings.json
+
+# IDE / editor (local only; team rules use root .editorconfig)
+.cursor/
+.idea/
+.vscode/
+
+# Test and coverage output (CI uploads artifacts; do not commit)
+TestResults/
+coverage/
+*.trx
+coverage*.json
+coverage*.xml
+coverage*.info
+*.coverage
+*.coveragexml
+
+# MSBuild
+*.binlog

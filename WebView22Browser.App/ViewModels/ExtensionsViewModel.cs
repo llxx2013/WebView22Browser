@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
+
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+
 using WebView22Browser.App.Services;
 
 namespace WebView22Browser.App.ViewModels;

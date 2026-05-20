@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
+
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+
 using WebView22Browser.Core;
 using WebView22Browser.Core.Models;
 using WebView22Browser.Core.Stores;

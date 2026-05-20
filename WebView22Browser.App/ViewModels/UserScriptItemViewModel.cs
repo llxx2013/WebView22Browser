@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+
 using WebView22Browser.Core.Models;
 
 namespace WebView22Browser.App.ViewModels;

@@ -125,6 +125,14 @@ dotnet test
 dotnet run --project WebView22Browser.App
 ```
 
+代码风格与格式（与 CI 一致）：
+
+```powershell
+dotnet tool restore
+dotnet format WebView22Browser.sln
+dotnet format WebView22Browser.sln --verify-no-changes
+```
+
 `dotnet test` 仅运行 Core 与 ViewModel 层逻辑，无需安装 WebView2 运行时。
 
 生产发布：
