@@ -124,6 +124,7 @@ public partial class App : Application
         services.AddSingleton<UserScriptsViewModel>();
         services.AddSingleton<UserScriptCommandsViewModel>();
         services.AddSingleton<MainViewModel>();
+        services.AddSingleton(sp => new Lazy<MainViewModel>(() => sp.GetRequiredService<MainViewModel>()));
         services.AddSingleton<MainWindow>();
         return services.BuildServiceProvider();
     }

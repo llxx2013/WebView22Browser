@@ -11,7 +11,7 @@ namespace WebView22Browser.App.Services;
 
 public sealed class TabSleepService : IRuntimeBrowserSettingsApplier, IDisposable
 {
-    private readonly MainViewModel _mainViewModel;
+    private readonly Lazy<MainViewModel> _mainViewModel;
     private readonly ITabHostService _tabHostService;
     private readonly ISystemPressureMonitor _pressureMonitor;
     private readonly ITabSessionStore _sessionStore;
@@ -19,11 +19,12 @@ public sealed class TabSleepService : IRuntimeBrowserSettingsApplier, IDisposabl
     private Dispatcher? _dispatcher;
     private DispatcherTimer? _timer;
     private bool _isStarted;
+    private bool _mainViewModelSubscribed;
     private bool _sessionSnapshotStale = true;
     private BrowserTabViewModel? _previousSelectedTab;
 
     public TabSleepService(
-        MainViewModel mainViewModel,
+        Lazy<MainViewModel> mainViewModel,
         ITabHostService tabHostService,
         ISystemPressureMonitor pressureMonitor,
         ITabSessionStore sessionStore,
@@ -34,12 +35,12 @@ public sealed class TabSleepService : IRuntimeBrowserSettingsApplier, IDisposabl
         _pressureMonitor = pressureMonitor;
         _sessionStore = sessionStore;
         _options = options;
-        _mainViewModel.PropertyChanged += OnMainViewModelPropertyChanged;
     }
 
     public void Start(Dispatcher dispatcher)
     {
         _dispatcher = dispatcher;
+        EnsureMainViewModelSubscription();
         if (_isStarted || _options.TabSleepTimeoutMinutes <= 0)
             return;
 
@@ -115,7 +116,17 @@ public sealed class TabSleepService : IRuntimeBrowserSettingsApplier, IDisposabl
     public void Dispose()
     {
         Stop();
-        _mainViewModel.PropertyChanged -= OnMainViewModelPropertyChanged;
+        if (_mainViewModelSubscribed)
+            _mainViewModel.Value.PropertyChanged -= OnMainViewModelPropertyChanged;
+    }
+
+    private void EnsureMainViewModelSubscription()
+    {
+        if (_mainViewModelSubscribed)
+            return;
+
+        _mainViewModel.Value.PropertyChanged += OnMainViewModelPropertyChanged;
+        _mainViewModelSubscribed = true;
     }
 
     private void OnMainViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -125,7 +136,7 @@ public sealed class TabSleepService : IRuntimeBrowserSettingsApplier, IDisposabl
 
         try
         {
-            var selected = _mainViewModel.SelectedTab;
+            var selected = _mainViewModel.Value.SelectedTab;
             if (_previousSelectedTab != null && _previousSelectedTab != selected)
                 _previousSelectedTab.TouchActivity();
 
@@ -160,7 +171,7 @@ public sealed class TabSleepService : IRuntimeBrowserSettingsApplier, IDisposabl
             var pressure = _pressureMonitor.Current;
             var anyAction = false;
 
-            foreach (var tab in _mainViewModel.Tabs.ToList())
+            foreach (var tab in _mainViewModel.Value.Tabs.ToList())
             {
                 var idleDuration = now - tab.LastActiveUtc;
                 var candidate = new TabSleepCandidate(
@@ -228,7 +239,7 @@ public sealed class TabSleepService : IRuntimeBrowserSettingsApplier, IDisposabl
     private TabSessionFile BuildSessionSnapshot()
     {
         var sources = new List<TabSessionSource>();
-        foreach (var tab in _mainViewModel.Tabs)
+        foreach (var tab in _mainViewModel.Value.Tabs)
         {
             IReadOnlyList<string>? history = tab.FrozenHistoryEntries;
             var index = tab.FrozenHistoryIndex;
@@ -254,7 +265,7 @@ public sealed class TabSleepService : IRuntimeBrowserSettingsApplier, IDisposabl
 
         return TabSessionSnapshotBuilder.Build(
             sources,
-            _mainViewModel.SelectedTab?.TabId,
+            _mainViewModel.Value.SelectedTab?.TabId,
             _options.TabHistoryMaxEntries);
     }
 
