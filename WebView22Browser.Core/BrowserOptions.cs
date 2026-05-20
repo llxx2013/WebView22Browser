@@ -20,6 +20,8 @@ public sealed class BrowserOptions
 
     public string? GmStorageDirectoryPath { get; set; }
 
+    public string? ScriptDepsDirectoryPath { get; set; }
+
     /// <summary>Maximum persisted download history entries (excludes in-progress).</summary>
     public int DownloadHistoryMaxEntries { get; set; } = 200;
 
@@ -93,6 +95,12 @@ public sealed class BrowserOptions
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "WebView22Browser",
             "gm-storage");
+
+    public string GetDefaultScriptDepsDirectoryPath() =>
+        ScriptDepsDirectoryPath ?? Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "WebView22Browser",
+            "script-deps");
 
     public string GetUserDataFolder() =>
         Path.Combine(

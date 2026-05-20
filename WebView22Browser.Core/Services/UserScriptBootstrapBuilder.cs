@@ -22,7 +22,13 @@ public sealed class UserScriptBootstrapBuilder
 
     public BootstrapArtifact? Build(
         IEnumerable<UserScriptEntry> scripts,
-        IReadOnlyDictionary<Guid, IReadOnlyDictionary<string, JsonElement>> preloadedValues)
+        IReadOnlyDictionary<Guid, IReadOnlyDictionary<string, JsonElement>> preloadedValues) =>
+        Build(scripts, preloadedValues, new Dictionary<Guid, ResolvedScriptDependencies>());
+
+    public BootstrapArtifact? Build(
+        IEnumerable<UserScriptEntry> scripts,
+        IReadOnlyDictionary<Guid, IReadOnlyDictionary<string, JsonElement>> preloadedValues,
+        IReadOnlyDictionary<Guid, ResolvedScriptDependencies> resolvedDependencies)
     {
         var enabled = scripts.Where(s => s.Enabled).ToList();
         if (enabled.Count == 0)
@@ -61,6 +67,9 @@ public sealed class UserScriptBootstrapBuilder
                 }
             };
 
+            if (!resolvedDependencies.TryGetValue(script.Id, out var deps))
+                deps = new ResolvedScriptDependencies();
+
             rules.Add(new BootstrapRule(
                 script.Id.ToString(),
                 script.MatchPatterns,
@@ -71,7 +80,9 @@ public sealed class UserScriptBootstrapBuilder
                 script.RunInTopFrameOnly,
                 script.Grants,
                 initialDict,
-                scriptInfo));
+                scriptInfo,
+                deps.RequireScripts,
+                deps.ResourceTexts));
         }
 
         var rulesJson = JsonSerializer.Serialize(rules);
@@ -150,7 +161,21 @@ public sealed class UserScriptBootstrapBuilder
               });
               Object.defineProperty(window, '__wv2browser', { value: legacy, writable: false, configurable: false });
 
-              function buildGm(scriptId, nonce, grants, initialValues, scriptInfo) {
+              function injectRequireScripts(scripts) {
+                if (!scripts || scripts.length === 0) return;
+                var parent = document.head || document.documentElement;
+                for (var ri = 0; ri < scripts.length; ri++) {
+                  try {
+                    var el = document.createElement('script');
+                    el.textContent = scripts[ri];
+                    parent.appendChild(el);
+                  } catch (reqErr) {
+                    console.error('[userscript] require inject', reqErr);
+                  }
+                }
+              }
+
+              function buildGm(scriptId, nonce, grants, initialValues, scriptInfo, resourceTexts) {
                 function postGm(type, payload) {
                   if (!_origPost) return;
                   _origPost(JSON.stringify({
@@ -287,8 +312,9 @@ public sealed class UserScriptBootstrapBuilder
                   };
                 }
                 if (grantSet['GM_getResourceText']) {
+                  var texts = resourceTexts || {};
                   api.GM_getResourceText = function (name) {
-                    return null;
+                    return Object.prototype.hasOwnProperty.call(texts, name) ? texts[name] : null;
                   };
                 }
                 if (grantSet['GM_registerMenuCommand']) {
@@ -406,7 +432,7 @@ public sealed class UserScriptBootstrapBuilder
               function runUserScript(rule) {
                 var nonce = noncesById[rule.id];
                 var gm = shouldBuildGm(rule.grants)
-                  ? buildGm(rule.id, nonce, rule.grants, rule.initialValues, rule.info)
+                  ? buildGm(rule.id, nonce, rule.grants, rule.initialValues, rule.info, rule.resourceTexts)
                   : null;
                 // Use `new Function` instead of `eval` so the user code cannot reach the
                 // bootstrap IIFE scope (rules array, noncesById, pendingByRequest, _origPost,
@@ -414,6 +440,7 @@ public sealed class UserScriptBootstrapBuilder
                 // parameters and globals are reachable from the code body.
                 var exec = function () {
                   try {
+                    injectRequireScripts(rule.requireScripts);
                     var prelude = '';
                     if (gm) {
                       for (var pi = 0; pi < rule.grants.length; pi++) {
@@ -512,5 +539,7 @@ public sealed class UserScriptBootstrapBuilder
         bool RunInTopFrameOnly,
         string[] Grants,
         Dictionary<string, JsonElement> InitialValues,
-        Dictionary<string, object> Info);
+        Dictionary<string, object> Info,
+        string[] RequireScripts,
+        Dictionary<string, string> ResourceTexts);
 }

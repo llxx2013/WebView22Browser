@@ -12,7 +12,7 @@ public static class UserScriptMetadataParser
 
     private static readonly HashSet<string> UnsupportedDirectives = new(StringComparer.OrdinalIgnoreCase)
     {
-        "require", "resource", "antifeature", "icon", "version", "description",
+        "antifeature", "icon", "version", "description",
         "author", "license", "namespace", "updateURL", "downloadURL", "supportURL", "homepage"
     };
 
@@ -92,6 +92,13 @@ public static class UserScriptMetadataParser
                     if (!string.IsNullOrWhiteSpace(value))
                         result.ConnectPatterns = Append(result.ConnectPatterns, value);
                     break;
+                case "require":
+                    if (!string.IsNullOrWhiteSpace(value))
+                        result.RequireUrls = Append(result.RequireUrls, value);
+                    break;
+                case "resource":
+                    ParseResourceDirective(value, result, result.Warnings);
+                    break;
                 default:
                     result.Warnings.Add($"@{key} 未识别，已忽略。");
                     break;
@@ -123,6 +130,32 @@ public static class UserScriptMetadataParser
 
     private static string[] Append(string[] existing, string value) =>
         existing.Concat([value]).ToArray();
+
+    private static void ParseResourceDirective(string value, UserScriptParseResult result, List<string> warnings)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            warnings.Add("@resource 缺少名称与 URL。");
+            return;
+        }
+
+        var spaceIndex = value.IndexOf(' ');
+        if (spaceIndex <= 0 || spaceIndex >= value.Length - 1)
+        {
+            warnings.Add($"@resource 格式无效（应为「名称 URL」）：{value}");
+            return;
+        }
+
+        var name = value[..spaceIndex].Trim();
+        var url = value[(spaceIndex + 1)..].Trim();
+        if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(url))
+        {
+            warnings.Add($"@resource 格式无效（应为「名称 URL」）：{value}");
+            return;
+        }
+
+        result.Resources[name] = url;
+    }
 
     private static UserScriptRunAt ParseRunAt(string value, List<string> warnings)
     {

@@ -565,4 +565,68 @@ public class UserScriptBootstrapBuilderTests
         Assert.DoesNotContain("key1", artifact.JavaScript);
         Assert.DoesNotContain("v1", artifact.JavaScript);
     }
+
+    [Fact]
+    public void Build_WithResolvedRequires_EmbedsInjectRequireScripts()
+    {
+        var id = Guid.NewGuid();
+        var scripts = new[]
+        {
+            new UserScriptEntry
+            {
+                Id = id,
+                Enabled = true,
+                MatchPatterns = ["*://*/*"],
+                Code = "void 0;"
+            }
+        };
+        var resolved = new Dictionary<Guid, ResolvedScriptDependencies>
+        {
+            [id] = new ResolvedScriptDependencies
+            {
+                RequireScripts = ["window.__req = 1;", "window.__req2 = 2;"]
+            }
+        };
+
+        var artifact = CreateBuilder().Build(scripts, new Dictionary<Guid, IReadOnlyDictionary<string, JsonElement>>(), resolved);
+
+        Assert.NotNull(artifact);
+        Assert.Contains("injectRequireScripts", artifact.JavaScript);
+        Assert.Contains("createElement('script')", artifact.JavaScript);
+        Assert.Contains("window.__req = 1;", artifact.JavaScript);
+    }
+
+    [Fact]
+    public void Build_WithResolvedResources_GeneratesGmGetResourceText()
+    {
+        var id = Guid.NewGuid();
+        var scripts = new[]
+        {
+            new UserScriptEntry
+            {
+                Id = id,
+                Enabled = true,
+                MatchPatterns = ["*://*/*"],
+                Grants = ["GM_getResourceText"],
+                Code = "void 0;"
+            }
+        };
+        var resolved = new Dictionary<Guid, ResolvedScriptDependencies>
+        {
+            [id] = new ResolvedScriptDependencies
+            {
+                ResourceTexts = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["swalStyle"] = ".swal { color: red; }"
+                }
+            }
+        };
+
+        var artifact = CreateBuilder().Build(scripts, new Dictionary<Guid, IReadOnlyDictionary<string, JsonElement>>(), resolved);
+
+        Assert.NotNull(artifact);
+        Assert.Contains("api.GM_getResourceText", artifact.JavaScript);
+        Assert.Contains("swalStyle", artifact.JavaScript);
+        Assert.Contains(".swal { color: red; }", artifact.JavaScript);
+    }
 }

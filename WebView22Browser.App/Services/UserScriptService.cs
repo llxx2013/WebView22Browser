@@ -3,6 +3,7 @@ using System.Text.Json;
 
 using Microsoft.Web.WebView2.Core;
 
+using WebView22Browser.Core.Models;
 using WebView22Browser.Core.Services;
 using WebView22Browser.Core.Stores;
 
@@ -18,6 +19,7 @@ public sealed class UserScriptService
     private readonly UserScriptBridge _bridge;
     private readonly IGmStorageStore _gmStore;
     private readonly ITabHostService _tabHostService;
+    private readonly IUserScriptDependencyResolver _dependencyResolver;
     private readonly ConcurrentDictionary<CoreWebView2, string> _registrationIds = new();
 
     public UserScriptService(
@@ -25,13 +27,15 @@ public sealed class UserScriptService
         UserScriptBootstrapBuilder bootstrapBuilder,
         UserScriptBridge bridge,
         IGmStorageStore gmStore,
-        ITabHostService tabHostService)
+        ITabHostService tabHostService,
+        IUserScriptDependencyResolver dependencyResolver)
     {
         _store = store;
         _bootstrapBuilder = bootstrapBuilder;
         _bridge = bridge;
         _gmStore = gmStore;
         _tabHostService = tabHostService;
+        _dependencyResolver = dependencyResolver;
     }
 
     public event Action? ScriptsChanged;
@@ -41,7 +45,10 @@ public sealed class UserScriptService
     public async Task LoadAsync(CancellationToken cancellationToken = default) =>
         await _store.LoadAsync(cancellationToken);
 
-    public async Task ApplyToWebViewAsync(CoreWebView2 core, CancellationToken cancellationToken = default)
+    public async Task ApplyToWebViewAsync(
+        CoreWebView2 core,
+        CancellationToken cancellationToken = default,
+        IReadOnlyDictionary<Guid, ResolvedScriptDependencies>? resolvedDependencies = null)
     {
         if (_registrationIds.TryRemove(core, out var existingId))
         {
@@ -66,7 +73,8 @@ public sealed class UserScriptService
             preloaded[script.Id] = await _gmStore.LoadAsync(script.Id, cancellationToken);
         }
 
-        var artifact = _bootstrapBuilder.Build(enabled, preloaded);
+        resolvedDependencies ??= await _dependencyResolver.ResolveAllAsync(enabled, cancellationToken);
+        var artifact = _bootstrapBuilder.Build(enabled, preloaded, resolvedDependencies);
         if (artifact is null)
         {
             _bridge.RegisterNonces(core, EmptyNonces);
@@ -82,9 +90,12 @@ public sealed class UserScriptService
     {
         ScriptsChanged?.Invoke();
 
+        var enabled = _store.Items.Where(s => s.Enabled).ToList();
+        var resolvedDependencies = await _dependencyResolver.ResolveAllAsync(enabled, cancellationToken);
+
         var applyTasks = _tabHostService.GetAllHosts()
             .Where(host => host.Tab?.IsWebViewReady == true && host.CoreWebView2 != null)
-            .Select(host => ApplyToWebViewAsync(host.CoreWebView2!, cancellationToken))
+            .Select(host => ApplyToWebViewAsync(host.CoreWebView2!, cancellationToken, resolvedDependencies))
             .ToList();
 
         if (applyTasks.Count == 0)

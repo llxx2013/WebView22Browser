@@ -9,13 +9,16 @@ public sealed class UserScriptImportService
 {
     private readonly IDialogService _dialogService;
     private readonly UserScriptExtensionConflictService _conflictService;
+    private readonly IUserScriptDependencyResolver _dependencyResolver;
 
     public UserScriptImportService(
         IDialogService dialogService,
-        UserScriptExtensionConflictService conflictService)
+        UserScriptExtensionConflictService conflictService,
+        IUserScriptDependencyResolver dependencyResolver)
     {
         _dialogService = dialogService;
         _conflictService = conflictService;
+        _dependencyResolver = dependencyResolver;
     }
 
     public async Task<UserScriptEntry?> ImportFromFileAsync(string path)
@@ -42,12 +45,17 @@ public sealed class UserScriptImportService
             RunInTopFrameOnly = parsed.RunInTopFrameOnly,
             Grants = parsed.Grants.ToArray(),
             ConnectPatterns = parsed.ConnectPatterns.ToArray(),
+            RequireUrls = parsed.RequireUrls.ToArray(),
+            Resources = new Dictionary<string, string>(parsed.Resources, StringComparer.Ordinal),
             Enabled = true,
             SourceFilePath = path
         };
 
         var messages = new List<string>();
         messages.AddRange(parsed.Warnings);
+
+        var dependencyResult = await _dependencyResolver.ResolveAsync(entry);
+        messages.AddRange(dependencyResult.Warnings);
 
         var conflictCheck = _conflictService.CheckConflictsForScript(entry);
         if (!conflictCheck.IsAvailable)

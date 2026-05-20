@@ -17,17 +17,19 @@ public class MainViewModelTests
         var gmStore = new JsonGmStorageStore(
             Path.Combine(Path.GetTempPath(), $"gm-vm-{Guid.NewGuid():N}"),
             new GmStorageQuota());
+        var dependencyResolver = new FakeUserScriptDependencyResolver();
         var userScriptService = new UserScriptService(
             userScriptStore,
             new UserScriptBootstrapBuilder(),
             TestServiceFactory.CreateUserScriptBridge(gmStore),
             gmStore,
-            new TabHostService());
+            new TabHostService(),
+            dependencyResolver);
         var extensionService = new BrowserExtensionService(
             new JsonExtensionSourceStore(Path.Combine(Path.GetTempPath(), $"ext-vm-{Guid.NewGuid()}.json")),
             new FakeDialogService());
         var conflictService = new UserScriptExtensionConflictService(extensionService, new ExtensionManifestReader());
-        var importService = new UserScriptImportService(new FakeDialogService(), conflictService);
+        var importService = new UserScriptImportService(new FakeDialogService(), conflictService, dependencyResolver);
         sessionStore ??= new JsonTabSessionStore(Path.Combine(Path.GetTempPath(), $"tabs-vm-{Guid.NewGuid():N}.json"));
 
         return new MainViewModel(

@@ -11,7 +11,9 @@
 
 [UserScriptMetadataParser](../WebView22Browser.Core/Services/UserScriptMetadataParser.cs) 解析 `// ==UserScript== ... ==/UserScript==` 块，支持：
 
-`@name`、`@match` / `@include`、`@exclude`、`@run-at`（`document-start` / `-end` / `-idle`）、`@noframes`、`@grant`、`@connect`。
+`@name`、`@match` / `@include`、`@exclude`、`@run-at`（`document-start` / `-end` / `-idle`）、`@noframes`、`@grant`、`@connect`、`@require`（外部 JS URL）、`@resource`（`名称 URL`，如 CSS）。
+
+`@require` / `@resource` 的 URL 会写入 [UserScriptEntry](../WebView22Browser.Core/Models/UserScriptEntry.cs) 并随 `userscripts.json` 持久化。
 
 URL 匹配语义与 [UserScriptUrlMatcher](../WebView22Browser.Core/Services/UserScriptUrlMatcher.cs) 一致；测试含 [UserScriptUrlMatcherParityTests](../../WebView22Browser.Tests/UserScriptUrlMatcherParityTests.cs)（与注入 JS 同构校验）。
 
@@ -20,6 +22,24 @@ URL 匹配语义与 [UserScriptUrlMatcher](../WebView22Browser.Core/Services/Use
 - 脚本在 `document-created` 时由 [UserScriptService](../WebView22Browser.App/Services/UserScriptService.cs) / [UserScriptBridge](../WebView22Browser.App/Services/UserScriptBridge.cs) 注入。
 - 用户代码经 `new Function('GM', 'unsafeWindow', code)` 包装，与页面**共享 JS 世界**（非 Tampermonkey 级隔离世界），但无法访问 bootstrap 闭包内的鉴权信息。
 - 注入脚本由 [UserScriptBootstrapBuilder](../WebView22Browser.Core/Services/UserScriptBootstrapBuilder.cs) 生成（URL 匹配、GM API、每脚本 **nonce**）。
+- 在每个 `@run-at` 调度点执行用户代码**之前**，按元数据顺序将已缓存的 `@require` 源码以 `<script>` 注入 `document.head`（与 Tampermonkey 一致）。
+- `GM_getResourceText(name)` 返回已缓存的 `@resource` 文本（需声明 `@grant GM_getResourceText`）。
+
+## `@require` / `@resource` 与依赖缓存
+
+| 组件 | 职责 |
+| --- | --- |
+| [UserScriptDependencyCache](../WebView22Browser.App/Services/UserScriptDependencyCache.cs) | 宿主 `HttpClient` 下载并缓存到 `%LocalAppData%/WebView22Browser/script-deps/`（URL SHA-256 文件名） |
+| [UserScriptDependencyResolver](../WebView22Browser.App/Services/UserScriptDependencyResolver.cs) | 解析脚本的全部 require/resource URL |
+| [UserScriptImportService](../WebView22Browser.App/Services/UserScriptImportService.cs) | 导入成功后预取；失败写入确认对话框警告 |
+| [UserScriptService](../WebView22Browser.App/Services/UserScriptService.cs) | `RefreshAllHostsAsync` 前批量预取，再注入各 WebView |
+
+限制与策略：
+
+- 仅 `http`/`https` URL；单文件上限 **5 MB**（`UserScriptDependencyCache.MaxFileBytes`）。
+- 预取走宿主网络，**不**扩展脚本的 `@connect`（例如 `unpkg.com` 不必写入 `@connect`）。
+- 缓存未命中或下载失败时，bootstrap 跳过对应项并在页面 `console.error`；导入/刷新时会在 UI 警告中列出。
+- 修改脚本列表或依赖 URL 后需**刷新已打开标签**；侧栏保存会触发 `RefreshAllHostsAsync` 重新预取。
 
 ## `@grant` 支持的 GM API
 
@@ -27,7 +47,7 @@ URL 匹配语义与 [UserScriptUrlMatcher](../WebView22Browser.Core/Services/Use
 | --- | --- |
 | 存储 | `GM_setValue`、`GM_getValue`、`GM_deleteValue`、`GM_listValues` |
 | 网络 | `GM_xmlhttpRequest` |
-| UI / 系统 | `GM_log`、`GM_info`、`GM_notification`、`GM_addStyle`、`GM_openInTab`、`GM_setClipboard`（仅 `text`）、`GM_registerMenuCommand`、`GM_unregisterMenuCommand` |
+| UI / 系统 | `GM_log`、`GM_info`、`GM_notification`、`GM_addStyle`、`GM_openInTab`、`GM_setClipboard`（仅 `text`）、`GM_registerMenuCommand`、`GM_unregisterMenuCommand`、`GM_getResourceText` |
 
 未声明 `@grant` 等同 `@grant none`，所有 GM 函数不可见。完整列表以 [UserScriptGrantCatalog](../WebView22Browser.Core/Services/UserScriptGrantCatalog.cs) 为准。
 
@@ -76,4 +96,4 @@ URL 匹配语义与 [UserScriptUrlMatcher](../WebView22Browser.Core/Services/Use
 
 ## 测试
 
-`JsonUserScriptStoreTests`、`UserScriptMetadataParserTests`、`UserScriptUrlMatcherTests`、`UserScriptBootstrapBuilderTests`、`UserScriptMessageValidatorTests`、`UserScriptConnectMatcherTests`、`UserScriptConflictDetectorTests`、`JsonGmStorageStoreTests`、`GmStorageMessageHandlerTests`、`GmXhrServiceTests`、`GmXhrMessageHandlerTests`、`GmMenuCommandRegistryTests`。
+`JsonUserScriptStoreTests`、`UserScriptMetadataParserTests`、`UserScriptUrlMatcherTests`、`UserScriptBootstrapBuilderTests`、`UserScriptDependencyCacheTests`、`UserScriptDependencyResolverTests`、`UserScriptMessageValidatorTests`、`UserScriptConnectMatcherTests`、`UserScriptConflictDetectorTests`、`JsonGmStorageStoreTests`、`GmStorageMessageHandlerTests`、`GmXhrServiceTests`、`GmXhrMessageHandlerTests`、`GmMenuCommandRegistryTests`。

@@ -230,6 +230,8 @@ public partial class UserScriptsViewModel : ObservableObject
             RunInTopFrameOnly = source.RunInTopFrameOnly,
             Grants = source.Grants.ToArray(),
             ConnectPatterns = source.ConnectPatterns.ToArray(),
+            RequireUrls = source.RequireUrls.ToArray(),
+            Resources = new Dictionary<string, string>(source.Resources, StringComparer.Ordinal),
             SourceFilePath = source.SourceFilePath,
             CreatedAtUtc = source.CreatedAtUtc,
             UpdatedAtUtc = source.UpdatedAtUtc

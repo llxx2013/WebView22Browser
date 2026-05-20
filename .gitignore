@@ -1,6 +1,7 @@
 # Compiled output
 bin/
 obj/
+*_wpftmp.csproj
 
 # dotnet publish output
 publish/
