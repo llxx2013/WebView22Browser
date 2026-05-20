@@ -120,6 +120,7 @@ public partial class App : Application
         services.AddSingleton<SettingsViewModel>();
         services.AddSingleton<IDownloadService, WebView2DownloadService>();
         services.AddSingleton<ITabHostService, TabHostService>();
+        services.AddSingleton<IUiThreadMarshaller, WpfUiThreadMarshaller>();
         services.AddSingleton<ISystemPressureMonitor, SystemPressureMonitor>();
         services.AddSingleton<ITabSessionStore, JsonTabSessionStore>();
         services.AddSingleton<TabSleepService>();

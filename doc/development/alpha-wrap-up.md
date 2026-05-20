@@ -32,7 +32,7 @@
 | 指标 | 说明 |
 | --- | --- |
 | 测试规模 | 约 **373** 条用例；CI 在 `windows-latest` 全量执行 |
-| Linux 开发 | 约 **359** 通过；**14** 条 [MainViewModelTests](../../WebView22Browser.Tests/MainViewModelTests.cs) 因 `TabHostService` 加载 WPF 失败（见 [AGENTS.md](../../AGENTS.md)） |
+| Linux 开发 | **382** 条全绿（S2：`ITabWebViewHost` + `ImmediateUiThreadMarshaller`，见 [AGENTS.md](../../AGENTS.md)） |
 | CI 门禁 | restore → `dotnet format --verify-no-changes` → Release build → test |
 | 发布 | 标签 `v*` → [release.yml](../../.github/workflows/release.yml) 产出 win-x64 zip |
 | 文档 | [doc/](../) 覆盖架构、功能与已知限制 |
@@ -274,10 +274,10 @@ flowchart LR
 
 ### S2
 
-- [ ] `ITabHostService` 抽象 / Fake
-- [ ] `MainViewModelTests` Linux/Windows 一致
-- [ ] `TabWebViewHost` 去除 Service Locator
-- [ ] `TabSleepService` 单测
+- [x] `ITabHostService` 抽象 / Fake
+- [x] `MainViewModelTests` Linux/Windows 一致
+- [x] `TabWebViewHost` 去除 Service Locator
+- [x] `TabSleepService` 单测
 
 ### S3
 
@@ -302,3 +302,4 @@ flowchart LR
 | 2026-05-20 | 初版：基于 `main` 代码与文档梳理 |
 | 2026-05-20 | S0 完成：限制清单、验收记录、勾选表更新 |
 | 2026-05-20 | S1 完成：`JsonFileStoreBase`、原子 JSON 写、权限/会话/GM 失败状态栏提示 |
+| 2026-05-20 | S2 完成：`ITabWebViewHost`/`ITabHostCallbacks`、`FakeTabWebViewHost`、`TabSleepCycleProcessor` 单测、Linux 全绿 |

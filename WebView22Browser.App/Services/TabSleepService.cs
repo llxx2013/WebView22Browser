@@ -12,6 +12,7 @@ namespace WebView22Browser.App.Services;
 
 public sealed class TabSleepService : IRuntimeBrowserSettingsApplier, IDisposable
 {
+    private readonly TabSleepCycleProcessor _cycleProcessor = new();
     private readonly Lazy<MainViewModel> _mainViewModel;
     private readonly ITabHostService _tabHostService;
     private readonly ISystemPressureMonitor _pressureMonitor;
@@ -168,57 +169,18 @@ public sealed class TabSleepService : IRuntimeBrowserSettingsApplier, IDisposabl
     {
         try
         {
-            if (_options.TabSleepTimeoutMinutes <= 0)
-                return;
-
-            var timeout = TimeSpan.FromMinutes(_options.TabSleepTimeoutMinutes);
-            var now = DateTime.UtcNow;
-            var pressure = _pressureMonitor.Current;
-            var anyAction = false;
-
-            foreach (var tab in _mainViewModel.Value.Tabs.ToList())
-            {
-                var idleDuration = now - tab.LastActiveUtc;
-                var candidate = new TabSleepCandidate(
-                    IsEnabled: true,
-                    Timeout: timeout,
-                    IsWebViewReady: tab.IsWebViewReady,
-                    IsSleeping: tab.IsSleeping,
-                    IsSelected: tab.IsSelected,
-                    IsLoading: tab.IsLoading,
-                    IsPlayingAudio: tab.IsPlayingAudio,
-                    HasActiveDownloads: tab.HasActiveDownloads,
-                    IdleDuration: idleDuration,
-                    Pressure: pressure,
-                    IsMemoryReduced: tab.IsMemoryReduced,
-                    IsLightSuspended: tab.IsLightSuspended);
-
-                var action = TabSleepPolicy.Decide(candidate);
-                if (action == TabSleepAction.None)
-                    continue;
-
-                if (_tabHostService.GetHost(tab.TabId) is not { } host)
-                    continue;
-
-                switch (action)
-                {
-                    case TabSleepAction.ReduceMemory:
-                        await host.ReduceMemoryAsync();
-                        break;
-                    case TabSleepAction.Suspend:
-                        await host.SuspendLightAsync();
-                        break;
-                    case TabSleepAction.Destroy:
-                        await host.SuspendAsync();
-                        break;
-                }
-
-                anyAction = true;
-                MarkSessionDirty();
-            }
+            var anyAction = await _cycleProcessor.ProcessAsync(
+                _mainViewModel.Value.Tabs.ToList(),
+                _tabHostService,
+                _options,
+                _pressureMonitor.Current,
+                DateTime.UtcNow);
 
             if (anyAction)
+            {
+                MarkSessionDirty();
                 PersistSessionSnapshotIfStale();
+            }
 
             await _sessionStore.FlushIfDebouncedAsync();
         }
