@@ -706,13 +706,37 @@ public partial class TabWebViewHost : UserControl
         }
     }
 
+    private async Task ReinjectUserScriptsIfNeededAsync(CoreWebView2 core)
+    {
+        try
+        {
+            var needsReinject = await core.ExecuteScriptAsync(
+                "(() => typeof $ === 'undefined' || typeof Swal === 'undefined' || typeof hotkeys === 'undefined')()");
+
+            if (needsReinject.Trim().Equals("true", StringComparison.OrdinalIgnoreCase)
+                && UserScriptService != null)
+            {
+                await UserScriptService.ReinjectPageEnvironmentAsync(core);
+            }
+
+            if (Application.Current.MainWindow?.DataContext is MainViewModel main && Tab != null)
+                main.ScriptCommands.Refresh(Tab);
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[WebView22Browser] User script reinject failed: {ex.Message}");
+        }
+    }
+
     private void OnNavigationStarting(object? sender, CoreWebView2NavigationStartingEventArgs e)
     {
         if (_isPermanentClose || Tab == null)
             return;
 
         if (webView.CoreWebView2 is { } core)
+        {
             UserScriptBridge?.ClearMenuCommands(core);
+        }
 
         Tab.TouchActivity();
         Tab.IsLoading = true;
@@ -743,6 +767,8 @@ public partial class TabWebViewHost : UserControl
         {
             RecordNavigationIfNeeded();
             _ = RecordBrowsingHistoryAsync();
+            if (webView.CoreWebView2 is { } probeCore)
+                _ = ReinjectUserScriptsIfNeededAsync(probeCore);
         }
         else
         {

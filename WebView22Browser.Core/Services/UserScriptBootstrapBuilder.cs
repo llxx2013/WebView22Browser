@@ -7,6 +7,11 @@ namespace WebView22Browser.Core.Services;
 
 public sealed class UserScriptBootstrapBuilder
 {
+    private static readonly JsonSerializerOptions RuleJsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
     private readonly Func<string> _nonceFactory;
 
     public UserScriptBootstrapBuilder()
@@ -85,7 +90,7 @@ public sealed class UserScriptBootstrapBuilder
                 deps.ResourceTexts));
         }
 
-        var rulesJson = JsonSerializer.Serialize(rules);
+        var rulesJson = JsonSerializer.Serialize(rules, RuleJsonOptions);
         var noncesById = noncesByScriptId.ToDictionary(
             static pair => pair.Key.ToString(),
             static pair => pair.Value,
@@ -429,7 +434,7 @@ public sealed class UserScriptBootstrapBuilder
                 return true;
               }
 
-              function runUserScript(rule) {
+              function runUserScript(rule, runImmediately) {
                 var nonce = noncesById[rule.id];
                 var gm = shouldBuildGm(rule.grants)
                   ? buildGm(rule.id, nonce, rule.grants, rule.initialValues, rule.info, rule.resourceTexts)
@@ -462,6 +467,10 @@ public sealed class UserScriptBootstrapBuilder
                     console.error('[userscript]', rule.id, e);
                   }
                 };
+                if (runImmediately) {
+                  exec();
+                  return;
+                }
                 if (rule.runAt === 'document-end') {
                   if (document.readyState === 'loading') {
                     document.addEventListener('DOMContentLoaded', exec, { once: true });
@@ -491,13 +500,18 @@ public sealed class UserScriptBootstrapBuilder
               var rules = JSON.parse({{rulesJsLiteral}});
               var noncesById = JSON.parse({{noncesJsLiteral}});
               var href = location.href;
-              for (var i = 0; i < rules.length; i++) {
-                var rule = rules[i];
-                if (rule.runInTopFrameOnly && window !== window.top) continue;
-                if (!matchAny(href, rule.matchPatterns)) continue;
-                if (rule.excludePatterns && rule.excludePatterns.length > 0 && matchAny(href, rule.excludePatterns)) continue;
-                runUserScript(rule);
+              function runMatchedRules(runImmediately) {
+                var currentHref = location.href;
+                for (var i = 0; i < rules.length; i++) {
+                  var rule = rules[i];
+                  if (rule.runInTopFrameOnly && window !== window.top) continue;
+                  if (!matchAny(currentHref, rule.matchPatterns)) continue;
+                  if (rule.excludePatterns && rule.excludePatterns.length > 0 && matchAny(currentHref, rule.excludePatterns)) continue;
+                  runUserScript(rule, runImmediately);
+                }
               }
+              window.__wv2browserRerunMatched = function () { runMatchedRules(true); };
+              runMatchedRules(false);
             })();
             """;
 

@@ -68,6 +68,31 @@ public class UserScriptBootstrapBuilderTests
     }
 
     [Fact]
+    public void Build_SerializesRulesWithCamelCasePropertyNames()
+    {
+        var scripts = new[]
+        {
+            new UserScriptEntry
+            {
+                Enabled = true,
+                MatchPatterns = ["*://*/*"],
+                RunInTopFrameOnly = true,
+                Grants = ["GM_registerMenuCommand"],
+                Code = "void 0;"
+            }
+        };
+
+        var artifact = CreateBuilder().Build(scripts);
+
+        Assert.NotNull(artifact);
+        Assert.Contains("matchPatterns", artifact.JavaScript);
+        Assert.Contains("runInTopFrameOnly", artifact.JavaScript);
+        Assert.Contains("grants", artifact.JavaScript);
+        Assert.DoesNotContain("MatchPatterns", artifact.JavaScript);
+        Assert.DoesNotContain("RunInTopFrameOnly", artifact.JavaScript);
+    }
+
+    [Fact]
     public void Build_EmbedsRulesViaJsonParseStringLiteral()
     {
         // Defense-in-depth: rules must be embedded as a JSON string literal parsed at
