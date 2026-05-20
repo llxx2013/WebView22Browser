@@ -22,6 +22,10 @@ public sealed class UserScriptEntry
 
     public string[] ConnectPatterns { get; set; } = [];
 
+    public string[] RequireUrls { get; set; } = [];
+
+    public Dictionary<string, string> Resources { get; set; } = new(StringComparer.Ordinal);
+
     public string? SourceFilePath { get; set; }
 
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
@@ -39,6 +43,8 @@ public sealed class UserScriptEntry
         RunInTopFrameOnly = source.RunInTopFrameOnly;
         Grants = source.Grants.ToArray();
         ConnectPatterns = source.ConnectPatterns.ToArray();
+        RequireUrls = source.RequireUrls.ToArray();
+        Resources = new Dictionary<string, string>(source.Resources, StringComparer.Ordinal);
         SourceFilePath = source.SourceFilePath;
         UpdatedAtUtc = DateTime.UtcNow;
     }

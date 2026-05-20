@@ -16,7 +16,8 @@ public static class Wv2GmXhrReplyChannel
     // a separate JSON-parsing context like postMessage provides.
     private static readonly JsonSerializerOptions ReplyOptions = new()
     {
-        Encoder = JavaScriptEncoder.Default
+        Encoder = JavaScriptEncoder.Default,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
     public static async Task ReplyAsync(

@@ -27,6 +27,38 @@ public class GmXhrServiceTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_AppliesContentTypeHeader_ToRequestBody()
+    {
+        string? capturedContentType = null;
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            capturedContentType = request.Content?.Headers.ContentType?.MediaType;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("ok", Encoding.UTF8, "text/plain")
+            };
+        });
+        var service = new GmXhrService(new HttpClient(handler));
+
+        await service.ExecuteAsync(
+            new GmXhrRequest
+            {
+                RequestId = "r-json",
+                Url = "https://example.com/api",
+                Method = "POST",
+                Data = """{"str":"hello"}""",
+                Headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["Content-Type"] = "application/json"
+                }
+            },
+            [],
+            CancellationToken.None);
+
+        Assert.Equal("application/json", capturedContentType);
+    }
+
+    [Fact]
     public async Task ExecuteAsync_ReturnsErrorStatus()
     {
         var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.MethodNotAllowed));

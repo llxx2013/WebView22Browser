@@ -7,6 +7,11 @@ namespace WebView22Browser.Core.Services;
 
 public sealed class UserScriptBootstrapBuilder
 {
+    private static readonly JsonSerializerOptions RuleJsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
     private readonly Func<string> _nonceFactory;
 
     public UserScriptBootstrapBuilder()
@@ -22,7 +27,13 @@ public sealed class UserScriptBootstrapBuilder
 
     public BootstrapArtifact? Build(
         IEnumerable<UserScriptEntry> scripts,
-        IReadOnlyDictionary<Guid, IReadOnlyDictionary<string, JsonElement>> preloadedValues)
+        IReadOnlyDictionary<Guid, IReadOnlyDictionary<string, JsonElement>> preloadedValues) =>
+        Build(scripts, preloadedValues, new Dictionary<Guid, ResolvedScriptDependencies>());
+
+    public BootstrapArtifact? Build(
+        IEnumerable<UserScriptEntry> scripts,
+        IReadOnlyDictionary<Guid, IReadOnlyDictionary<string, JsonElement>> preloadedValues,
+        IReadOnlyDictionary<Guid, ResolvedScriptDependencies> resolvedDependencies)
     {
         var enabled = scripts.Where(s => s.Enabled).ToList();
         if (enabled.Count == 0)
@@ -61,6 +72,9 @@ public sealed class UserScriptBootstrapBuilder
                 }
             };
 
+            if (!resolvedDependencies.TryGetValue(script.Id, out var deps))
+                deps = new ResolvedScriptDependencies();
+
             rules.Add(new BootstrapRule(
                 script.Id.ToString(),
                 script.MatchPatterns,
@@ -71,10 +85,12 @@ public sealed class UserScriptBootstrapBuilder
                 script.RunInTopFrameOnly,
                 script.Grants,
                 initialDict,
-                scriptInfo));
+                scriptInfo,
+                deps.RequireScripts,
+                deps.ResourceTexts));
         }
 
-        var rulesJson = JsonSerializer.Serialize(rules);
+        var rulesJson = JsonSerializer.Serialize(rules, RuleJsonOptions);
         var noncesById = noncesByScriptId.ToDictionary(
             static pair => pair.Key.ToString(),
             static pair => pair.Value,
@@ -150,7 +166,21 @@ public sealed class UserScriptBootstrapBuilder
               });
               Object.defineProperty(window, '__wv2browser', { value: legacy, writable: false, configurable: false });
 
-              function buildGm(scriptId, nonce, grants, initialValues, scriptInfo) {
+              function injectRequireScripts(scripts) {
+                if (!scripts || scripts.length === 0) return;
+                var parent = document.head || document.documentElement;
+                for (var ri = 0; ri < scripts.length; ri++) {
+                  try {
+                    var el = document.createElement('script');
+                    el.textContent = scripts[ri];
+                    parent.appendChild(el);
+                  } catch (reqErr) {
+                    console.error('[userscript] require inject', reqErr);
+                  }
+                }
+              }
+
+              function buildGm(scriptId, nonce, grants, initialValues, scriptInfo, resourceTexts) {
                 function postGm(type, payload) {
                   if (!_origPost) return;
                   _origPost(JSON.stringify({
@@ -239,7 +269,27 @@ public sealed class UserScriptBootstrapBuilder
                       handler: function (payload) {
                         try {
                           if (payload.kind === 'load') {
-                            if (details.onload) details.onload(payload.response);
+                            if (details.onload) {
+                              var res = payload.response;
+                              if (details.responseType === 'json' && res) {
+                                try {
+                                  var raw = res.response != null ? res.response : res.responseText;
+                                  if (typeof raw === 'string') {
+                                    var parsed = JSON.parse(raw);
+                                    res = Object.assign({}, res, { response: parsed, responseText: raw });
+                                  }
+                                } catch (parseErr) {
+                                  if (details.onerror) {
+                                    details.onerror({
+                                      error: parseErr && parseErr.message ? parseErr.message : String(parseErr),
+                                      details: payload
+                                    });
+                                  }
+                                  return;
+                                }
+                              }
+                              details.onload(res);
+                            }
                           } else if (payload.kind === 'error') {
                             if (details.onerror) details.onerror({ error: payload.error, details: payload });
                           } else if (payload.kind === 'timeout') {
@@ -264,6 +314,12 @@ public sealed class UserScriptBootstrapBuilder
                     return {
                       abort: function () { postGm('gm.xhrAbort', { requestId: rid }); }
                     };
+                  };
+                }
+                if (grantSet['GM_getResourceText']) {
+                  var texts = resourceTexts || {};
+                  api.GM_getResourceText = function (name) {
+                    return Object.prototype.hasOwnProperty.call(texts, name) ? texts[name] : null;
                   };
                 }
                 if (grantSet['GM_registerMenuCommand']) {
@@ -378,10 +434,10 @@ public sealed class UserScriptBootstrapBuilder
                 return true;
               }
 
-              function runUserScript(rule) {
+              function runUserScript(rule, runImmediately) {
                 var nonce = noncesById[rule.id];
                 var gm = shouldBuildGm(rule.grants)
-                  ? buildGm(rule.id, nonce, rule.grants, rule.initialValues, rule.info)
+                  ? buildGm(rule.id, nonce, rule.grants, rule.initialValues, rule.info, rule.resourceTexts)
                   : null;
                 // Use `new Function` instead of `eval` so the user code cannot reach the
                 // bootstrap IIFE scope (rules array, noncesById, pendingByRequest, _origPost,
@@ -389,9 +445,19 @@ public sealed class UserScriptBootstrapBuilder
                 // parameters and globals are reachable from the code body.
                 var exec = function () {
                   try {
+                    injectRequireScripts(rule.requireScripts);
+                    var prelude = '';
+                    if (gm) {
+                      for (var pi = 0; pi < rule.grants.length; pi++) {
+                        var grantName = rule.grants[pi];
+                        if (grantName.indexOf('GM_') === 0 && Object.prototype.hasOwnProperty.call(gm, grantName)) {
+                          prelude += 'var ' + grantName + ' = GM.' + grantName + '; ';
+                        }
+                      }
+                    }
                     var userFn;
                     try {
-                      userFn = new Function('GM', 'unsafeWindow', rule.code);
+                      userFn = new Function('GM', 'unsafeWindow', prelude + rule.code);
                     } catch (compileErr) {
                       console.error('[userscript]', rule.id, compileErr);
                       return;
@@ -401,6 +467,10 @@ public sealed class UserScriptBootstrapBuilder
                     console.error('[userscript]', rule.id, e);
                   }
                 };
+                if (runImmediately) {
+                  exec();
+                  return;
+                }
                 if (rule.runAt === 'document-end') {
                   if (document.readyState === 'loading') {
                     document.addEventListener('DOMContentLoaded', exec, { once: true });
@@ -430,13 +500,18 @@ public sealed class UserScriptBootstrapBuilder
               var rules = JSON.parse({{rulesJsLiteral}});
               var noncesById = JSON.parse({{noncesJsLiteral}});
               var href = location.href;
-              for (var i = 0; i < rules.length; i++) {
-                var rule = rules[i];
-                if (rule.runInTopFrameOnly && window !== window.top) continue;
-                if (!matchAny(href, rule.matchPatterns)) continue;
-                if (rule.excludePatterns && rule.excludePatterns.length > 0 && matchAny(href, rule.excludePatterns)) continue;
-                runUserScript(rule);
+              function runMatchedRules(runImmediately) {
+                var currentHref = location.href;
+                for (var i = 0; i < rules.length; i++) {
+                  var rule = rules[i];
+                  if (rule.runInTopFrameOnly && window !== window.top) continue;
+                  if (!matchAny(currentHref, rule.matchPatterns)) continue;
+                  if (rule.excludePatterns && rule.excludePatterns.length > 0 && matchAny(currentHref, rule.excludePatterns)) continue;
+                  runUserScript(rule, runImmediately);
+                }
               }
+              window.__wv2browserRerunMatched = function () { runMatchedRules(true); };
+              runMatchedRules(false);
             })();
             """;
 
@@ -478,5 +553,7 @@ public sealed class UserScriptBootstrapBuilder
         bool RunInTopFrameOnly,
         string[] Grants,
         Dictionary<string, JsonElement> InitialValues,
-        Dictionary<string, object> Info);
+        Dictionary<string, object> Info,
+        string[] RequireScripts,
+        Dictionary<string, string> ResourceTexts);
 }

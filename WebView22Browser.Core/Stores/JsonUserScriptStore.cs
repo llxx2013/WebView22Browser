@@ -89,6 +89,8 @@ public sealed class JsonUserScriptStore : IUserScriptStore
             entry.MatchPatterns = entry.MatchPatterns.ToArray();
             entry.ExcludePatterns = entry.ExcludePatterns.ToArray();
             entry.ConnectPatterns = entry.ConnectPatterns.ToArray();
+            entry.RequireUrls = entry.RequireUrls.ToArray();
+            entry.Resources = new Dictionary<string, string>(entry.Resources, StringComparer.Ordinal);
             _items.Add(entry);
             return entry;
         }

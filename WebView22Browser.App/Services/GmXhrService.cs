@@ -1,5 +1,6 @@
 using System.IO;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 
 using WebView22Browser.Core.Models;
@@ -73,6 +74,15 @@ public sealed class GmXhrService : IGmXhrService
 
             if (key.Equals("Cookie", StringComparison.OrdinalIgnoreCase))
                 continue;
+
+            // StringContent already sets Content-Type (text/plain). TryAdd on content headers
+            // fails silently, so scripts like translate.user.js never send application/json.
+            if (key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase))
+            {
+                if (httpRequest.Content != null)
+                    httpRequest.Content.Headers.ContentType = MediaTypeHeaderValue.Parse(value);
+                continue;
+            }
 
             if (!httpRequest.Headers.TryAddWithoutValidation(key, value))
                 httpRequest.Content?.Headers.TryAddWithoutValidation(key, value);

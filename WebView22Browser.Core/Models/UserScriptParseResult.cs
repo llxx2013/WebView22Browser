@@ -16,6 +16,10 @@ public sealed class UserScriptParseResult
 
     public string[] ConnectPatterns { get; set; } = [];
 
+    public string[] RequireUrls { get; set; } = [];
+
+    public Dictionary<string, string> Resources { get; set; } = new(StringComparer.Ordinal);
+
     public string Code { get; set; } = string.Empty;
 
     public List<string> Warnings { get; } = [];

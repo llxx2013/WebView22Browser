@@ -155,4 +155,72 @@ public class UserScriptMetadataParserTests
         Assert.Contains("GM_customFutureApi", result.Grants);
         Assert.Contains(result.Warnings, w => w.Contains("GM_customFutureApi"));
     }
+
+    [Fact]
+    public void Parse_Require_CollectsUrlsInOrder()
+    {
+        const string source = """
+            // ==UserScript==
+            // @name Test
+            // @match *://*/*
+            // @require https://cdn.example/a.js
+            // @require https://cdn.example/b.js
+            // ==/UserScript==
+            """;
+        var result = UserScriptMetadataParser.Parse(source);
+
+        Assert.Equal(2, result.RequireUrls.Length);
+        Assert.Equal("https://cdn.example/a.js", result.RequireUrls[0]);
+        Assert.Equal("https://cdn.example/b.js", result.RequireUrls[1]);
+        Assert.DoesNotContain(result.Warnings, w => w.Contains("@require"));
+    }
+
+    [Fact]
+    public void Parse_Resource_ParsesNameAndUrl()
+    {
+        const string source = """
+            // ==UserScript==
+            // @name Test
+            // @match *://*/*
+            // @resource swalStyle https://cdn.example/style.css
+            // ==/UserScript==
+            """;
+        var result = UserScriptMetadataParser.Parse(source);
+
+        Assert.Single(result.Resources);
+        Assert.Equal("https://cdn.example/style.css", result.Resources["swalStyle"]);
+        Assert.DoesNotContain(result.Warnings, w => w.Contains("@resource"));
+    }
+
+    [Fact]
+    public void Parse_Resource_InvalidFormat_Warns()
+    {
+        const string source = """
+            // ==UserScript==
+            // @name Test
+            // @match *://*/*
+            // @resource badline
+            // ==/UserScript==
+            """;
+        var result = UserScriptMetadataParser.Parse(source);
+
+        Assert.Empty(result.Resources);
+        Assert.Contains(result.Warnings, w => w.Contains("@resource"));
+    }
+
+    [Fact]
+    public void Parse_KnownGrant_GM_getResourceText_DoesNotWarn()
+    {
+        const string source = """
+            // ==UserScript==
+            // @name Test
+            // @match *://*/*
+            // @grant GM_getResourceText
+            // ==/UserScript==
+            """;
+        var result = UserScriptMetadataParser.Parse(source);
+
+        Assert.Contains("GM_getResourceText", result.Grants);
+        Assert.DoesNotContain(result.Warnings, w => w.Contains("GM_getResourceText"));
+    }
 }

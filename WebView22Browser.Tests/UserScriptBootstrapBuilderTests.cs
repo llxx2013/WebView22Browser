@@ -68,6 +68,31 @@ public class UserScriptBootstrapBuilderTests
     }
 
     [Fact]
+    public void Build_SerializesRulesWithCamelCasePropertyNames()
+    {
+        var scripts = new[]
+        {
+            new UserScriptEntry
+            {
+                Enabled = true,
+                MatchPatterns = ["*://*/*"],
+                RunInTopFrameOnly = true,
+                Grants = ["GM_registerMenuCommand"],
+                Code = "void 0;"
+            }
+        };
+
+        var artifact = CreateBuilder().Build(scripts);
+
+        Assert.NotNull(artifact);
+        Assert.Contains("matchPatterns", artifact.JavaScript);
+        Assert.Contains("runInTopFrameOnly", artifact.JavaScript);
+        Assert.Contains("grants", artifact.JavaScript);
+        Assert.DoesNotContain("MatchPatterns", artifact.JavaScript);
+        Assert.DoesNotContain("RunInTopFrameOnly", artifact.JavaScript);
+    }
+
+    [Fact]
     public void Build_EmbedsRulesViaJsonParseStringLiteral()
     {
         // Defense-in-depth: rules must be embedded as a JSON string literal parsed at
@@ -167,7 +192,7 @@ public class UserScriptBootstrapBuilderTests
         var artifact = CreateBuilder().Build(scripts);
 
         Assert.NotNull(artifact);
-        Assert.Contains("new Function('GM', 'unsafeWindow', rule.code)", artifact.JavaScript);
+        Assert.Contains("new Function('GM', 'unsafeWindow', prelude + rule.code)", artifact.JavaScript);
         Assert.DoesNotContain("eval(code)", artifact.JavaScript);
     }
 
@@ -329,6 +354,125 @@ public class UserScriptBootstrapBuilderTests
     }
 
     [Fact]
+    public void Build_GmGetValueGrant_GeneratesPreludeBinding()
+    {
+        var scripts = new[]
+        {
+            new UserScriptEntry
+            {
+                Enabled = true,
+                MatchPatterns = ["*://*/*"],
+                Grants = ["GM_getValue", "GM_setValue"],
+                Code = "void 0;"
+            }
+        };
+
+        var artifact = CreateBuilder().Build(scripts);
+
+        Assert.NotNull(artifact);
+        Assert.Contains("grantName.indexOf('GM_') === 0", artifact.JavaScript);
+        Assert.Contains("'var ' + grantName + ' = GM.' + grantName + '; '", artifact.JavaScript);
+        Assert.Contains("prelude + rule.code", artifact.JavaScript);
+    }
+
+    [Theory]
+    [InlineData(new[] { "GM_getValue" }, new[] { "GM_getValue" }, "var GM_getValue = GM.GM_getValue; ")]
+    [InlineData(new[] { "GM_getValue", "GM_xmlhttpRequest" }, new[] { "GM_getValue" }, "var GM_getValue = GM.GM_getValue; ")]
+    [InlineData(new[] { "unsafeWindow", "GM_log" }, new[] { "GM_log" }, "var GM_log = GM.GM_log; ")]
+    public void PreludeParity_MatchesBootstrapSemantics(
+        string[] grants,
+        string[] apiKeys,
+        string expectedPrelude)
+    {
+        var prelude = UserScriptBootstrapGmPreludeParity.BuildPrelude(
+            grants,
+            apiKeys.ToHashSet(StringComparer.Ordinal));
+
+        Assert.Equal(expectedPrelude, prelude);
+    }
+
+    [Fact]
+    public void PreludeParity_UserCodeCanReferenceGmGetValueAlias()
+    {
+        var prelude = UserScriptBootstrapGmPreludeParity.BuildPrelude(
+            ["GM_getValue"],
+            new HashSet<string>(StringComparer.Ordinal) { "GM_getValue" });
+
+        Assert.Equal("var GM_getValue = GM.GM_getValue; ", prelude);
+
+        var gmGetValue = new Func<string, object?, object?>((key, def) =>
+            key == "key" ? 42 : def ?? 0);
+
+        object? CallViaAlias(string key, object? def) => gmGetValue(key, def);
+
+        Assert.Equal(42, CallViaAlias("key", 0));
+    }
+
+    [Fact]
+    public void Build_GmXhrJsonResponseType_ParsesJsonOnLoad()
+    {
+        var scripts = new[]
+        {
+            new UserScriptEntry
+            {
+                Enabled = true,
+                MatchPatterns = ["*://*/*"],
+                Grants = ["GM_xmlhttpRequest"],
+                Code = "void 0;"
+            }
+        };
+
+        var artifact = CreateBuilder().Build(scripts);
+
+        Assert.NotNull(artifact);
+        Assert.Contains("details.responseType === 'json'", artifact.JavaScript);
+        Assert.Contains("JSON.parse(raw)", artifact.JavaScript);
+    }
+
+    [Fact]
+    public void XhrJsonParity_ParsesResponseBody()
+    {
+        var (success, response, error) = UserScriptBootstrapXhrJsonParity.ApplyJsonResponseType(
+            "json",
+            new UserScriptBootstrapXhrJsonParity.XhrResponse(
+                200,
+                """{"code":200,"data":"ok"}""",
+                """{"code":200,"data":"ok"}"""));
+
+        Assert.True(success);
+        Assert.Null(error);
+        Assert.NotNull(response);
+        var parsed = Assert.IsType<JsonElement>(response!.Response);
+        Assert.Equal(200, parsed.GetProperty("code").GetInt32());
+        Assert.Equal("ok", parsed.GetProperty("data").GetString());
+    }
+
+    [Fact]
+    public void Build_GmGetResourceTextGrant_GeneratesPlaceholder()
+    {
+        var scripts = new[]
+        {
+            new UserScriptEntry
+            {
+                Enabled = true,
+                MatchPatterns = ["*://*/*"],
+                Grants = ["GM_getResourceText"],
+                Code = "void 0;"
+            }
+        };
+
+        var artifact = CreateBuilder().Build(scripts);
+
+        Assert.NotNull(artifact);
+        Assert.Contains("api.GM_getResourceText", artifact.JavaScript);
+        Assert.Equal(
+            "var GM_getResourceText = GM.GM_getResourceText; ",
+            UserScriptBootstrapGmPreludeParity.BuildPrelude(
+                ["GM_getResourceText"],
+                new HashSet<string>(StringComparer.Ordinal) { "GM_getResourceText" }));
+    }
+
+    [Fact]
     public void Build_InstallsWv2Dispatch()
     {
         var scripts = new[]
@@ -445,5 +589,69 @@ public class UserScriptBootstrapBuilderTests
         Assert.NotNull(artifact);
         Assert.DoesNotContain("key1", artifact.JavaScript);
         Assert.DoesNotContain("v1", artifact.JavaScript);
+    }
+
+    [Fact]
+    public void Build_WithResolvedRequires_EmbedsInjectRequireScripts()
+    {
+        var id = Guid.NewGuid();
+        var scripts = new[]
+        {
+            new UserScriptEntry
+            {
+                Id = id,
+                Enabled = true,
+                MatchPatterns = ["*://*/*"],
+                Code = "void 0;"
+            }
+        };
+        var resolved = new Dictionary<Guid, ResolvedScriptDependencies>
+        {
+            [id] = new ResolvedScriptDependencies
+            {
+                RequireScripts = ["window.__req = 1;", "window.__req2 = 2;"]
+            }
+        };
+
+        var artifact = CreateBuilder().Build(scripts, new Dictionary<Guid, IReadOnlyDictionary<string, JsonElement>>(), resolved);
+
+        Assert.NotNull(artifact);
+        Assert.Contains("injectRequireScripts", artifact.JavaScript);
+        Assert.Contains("createElement('script')", artifact.JavaScript);
+        Assert.Contains("window.__req = 1;", artifact.JavaScript);
+    }
+
+    [Fact]
+    public void Build_WithResolvedResources_GeneratesGmGetResourceText()
+    {
+        var id = Guid.NewGuid();
+        var scripts = new[]
+        {
+            new UserScriptEntry
+            {
+                Id = id,
+                Enabled = true,
+                MatchPatterns = ["*://*/*"],
+                Grants = ["GM_getResourceText"],
+                Code = "void 0;"
+            }
+        };
+        var resolved = new Dictionary<Guid, ResolvedScriptDependencies>
+        {
+            [id] = new ResolvedScriptDependencies
+            {
+                ResourceTexts = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["swalStyle"] = ".swal { color: red; }"
+                }
+            }
+        };
+
+        var artifact = CreateBuilder().Build(scripts, new Dictionary<Guid, IReadOnlyDictionary<string, JsonElement>>(), resolved);
+
+        Assert.NotNull(artifact);
+        Assert.Contains("api.GM_getResourceText", artifact.JavaScript);
+        Assert.Contains("swalStyle", artifact.JavaScript);
+        Assert.Contains(".swal { color: red; }", artifact.JavaScript);
     }
 }

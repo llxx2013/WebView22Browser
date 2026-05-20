@@ -18,6 +18,7 @@ public static class UserScriptGrantCatalog
         "GM_openInTab",
         "GM_registerMenuCommand",
         "GM_unregisterMenuCommand",
-        "GM_setClipboard"
+        "GM_setClipboard",
+        "GM_getResourceText"
     };
 }

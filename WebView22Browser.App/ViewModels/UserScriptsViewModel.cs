@@ -9,6 +9,7 @@ using WebView22Browser.App.Services;
 using WebView22Browser.App.Views;
 using WebView22Browser.Core;
 using WebView22Browser.Core.Models;
+using WebView22Browser.Core.Services;
 using WebView22Browser.Core.Stores;
 
 namespace WebView22Browser.App.ViewModels;
@@ -19,23 +20,29 @@ public partial class UserScriptsViewModel : ObservableObject
     private readonly UserScriptService _userScriptService;
     private readonly UserScriptImportService _importService;
     private readonly UserScriptExtensionConflictService _conflictService;
+    private readonly IUserScriptDependencyResolver _dependencyResolver;
     private readonly BrowserOptions _options;
     private readonly IDialogService _dialogService;
+    private readonly Lazy<MainViewModel> _mainViewModel;
 
     public UserScriptsViewModel(
         IUserScriptStore store,
         UserScriptService userScriptService,
         UserScriptImportService importService,
         UserScriptExtensionConflictService conflictService,
+        IUserScriptDependencyResolver dependencyResolver,
         BrowserOptions options,
-        IDialogService dialogService)
+        IDialogService dialogService,
+        Lazy<MainViewModel> mainViewModel)
     {
         _store = store;
         _userScriptService = userScriptService;
         _importService = importService;
         _conflictService = conflictService;
+        _dependencyResolver = dependencyResolver;
         _options = options;
         _dialogService = dialogService;
+        _mainViewModel = mainViewModel;
         Items = new ObservableCollection<UserScriptItemViewModel>();
     }
 
@@ -47,12 +54,13 @@ public partial class UserScriptsViewModel : ObservableObject
     [ObservableProperty]
     private string _statusMessage = "支持 .user.js 导入；修改后请刷新页面。";
 
-    public Task LoadAsync()
+    public async Task LoadAsync()
     {
         Items.Clear();
         foreach (var entry in _store.Items)
             Items.Add(new UserScriptItemViewModel(entry));
-        return Task.CompletedTask;
+
+        await RefreshDependencySummariesAsync();
     }
 
     [RelayCommand]
@@ -189,6 +197,23 @@ public partial class UserScriptsViewModel : ObservableObject
         await SaveAndRefreshAsync("已重新加载用户脚本");
 
     [RelayCommand]
+    private void ReloadAllOpenTabs()
+    {
+        var tabs = _mainViewModel.Value.Tabs;
+        if (tabs.Count == 0)
+        {
+            StatusMessage = "没有已打开的标签页可刷新。";
+            return;
+        }
+
+        foreach (var tab in tabs)
+            tab.RequestReload();
+
+        StatusMessage = $"已请求刷新 {tabs.Count} 个标签页。";
+        Debug.WriteLine($"[userscript] reload-all-tabs requested count={tabs.Count}");
+    }
+
+    [RelayCommand]
     private void OpenConfigFolder()
     {
         var folder = Path.GetDirectoryName(_options.GetDefaultUserScriptsPath());
@@ -204,11 +229,82 @@ public partial class UserScriptsViewModel : ObservableObject
         });
     }
 
-    private async Task SaveAndRefreshAsync(string status)
+    private async Task SaveAndRefreshAsync(string actionMessage)
     {
         await _store.SaveAsync();
-        await _userScriptService.RefreshAllHostsAsync();
-        StatusMessage = status + "。已打开的标签页需刷新后生效。";
+        var resolvedByScriptId = await _userScriptService.RefreshAllHostsAsync();
+        await ApplyDependencySummariesAsync(resolvedByScriptId);
+
+        var dependencyWarnings = Items
+            .Where(i => i.Entry.Enabled)
+            .Select(i => resolvedByScriptId.TryGetValue(i.Id, out var deps) ? deps : null)
+            .Where(deps => deps != null)
+            .SelectMany(deps => deps!.Warnings)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        var hasDependencyIssues = Items.Any(i =>
+            i.Entry.Enabled
+            && UserScriptDependencyStatus.HasDependencies(i.Entry)
+            && (!resolvedByScriptId.TryGetValue(i.Id, out var deps)
+                || !UserScriptDependencyStatus.IsCacheReady(i.Entry, deps)));
+
+        if (dependencyWarnings.Count > 0)
+        {
+            StatusMessage =
+                $"{actionMessage}。部分 @require/@resource 未能加载（已保存）；请检查网络或 URL 后点击「重载」，并刷新已打开标签。";
+            if (dependencyWarnings.Count <= 3)
+            {
+                StatusMessage += Environment.NewLine + string.Join(
+                    Environment.NewLine,
+                    dependencyWarnings.Take(3));
+            }
+        }
+        else if (hasDependencyIssues)
+        {
+            StatusMessage = $"{actionMessage}。依赖尚未全部就绪，请点击「重载」后刷新标签。";
+        }
+        else
+        {
+            StatusMessage = Items.Any(i => UserScriptDependencyStatus.HasDependencies(i.Entry))
+                ? $"{actionMessage}。依赖已就绪；请刷新已打开标签页，或使用「刷新全部标签」使脚本生效。"
+                : $"{actionMessage}。请刷新已打开标签页，或使用「刷新全部标签」使脚本生效。";
+        }
+    }
+
+    private async Task RefreshDependencySummariesAsync()
+    {
+        var resolved = new Dictionary<Guid, ResolvedScriptDependencies>();
+        foreach (var item in Items)
+        {
+            if (!item.Entry.Enabled)
+            {
+                item.UpdateDependencyStatus(null);
+                continue;
+            }
+
+            var deps = await _dependencyResolver.ResolveAsync(item.Entry);
+            resolved[item.Id] = deps;
+            item.UpdateDependencyStatus(deps);
+        }
+    }
+
+    private async Task ApplyDependencySummariesAsync(
+        IReadOnlyDictionary<Guid, ResolvedScriptDependencies> resolvedByScriptId)
+    {
+        foreach (var item in Items)
+        {
+            if (!item.Entry.Enabled)
+            {
+                item.UpdateDependencyStatus(null);
+                continue;
+            }
+
+            if (resolvedByScriptId.TryGetValue(item.Id, out var resolved))
+                item.UpdateDependencyStatus(resolved);
+            else
+                item.UpdateDependencyStatus(await _dependencyResolver.ResolveAsync(item.Entry));
+        }
     }
 
     private bool ShowEditDialog(UserScriptEntry entry, bool isNew)
@@ -230,6 +326,8 @@ public partial class UserScriptsViewModel : ObservableObject
             RunInTopFrameOnly = source.RunInTopFrameOnly,
             Grants = source.Grants.ToArray(),
             ConnectPatterns = source.ConnectPatterns.ToArray(),
+            RequireUrls = source.RequireUrls.ToArray(),
+            Resources = new Dictionary<string, string>(source.Resources, StringComparer.Ordinal),
             SourceFilePath = source.SourceFilePath,
             CreatedAtUtc = source.CreatedAtUtc,
             UpdatedAtUtc = source.UpdatedAtUtc

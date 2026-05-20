@@ -17,20 +17,33 @@ public class MainViewModelTests
         var gmStore = new JsonGmStorageStore(
             Path.Combine(Path.GetTempPath(), $"gm-vm-{Guid.NewGuid():N}"),
             new GmStorageQuota());
+        var dependencyResolver = new FakeUserScriptDependencyResolver();
         var userScriptService = new UserScriptService(
             userScriptStore,
             new UserScriptBootstrapBuilder(),
             TestServiceFactory.CreateUserScriptBridge(gmStore),
             gmStore,
-            new TabHostService());
+            new TabHostService(),
+            dependencyResolver);
         var extensionService = new BrowserExtensionService(
             new JsonExtensionSourceStore(Path.Combine(Path.GetTempPath(), $"ext-vm-{Guid.NewGuid()}.json")),
             new FakeDialogService());
         var conflictService = new UserScriptExtensionConflictService(extensionService, new ExtensionManifestReader());
-        var importService = new UserScriptImportService(new FakeDialogService(), conflictService);
+        var importService = new UserScriptImportService(new FakeDialogService(), conflictService, dependencyResolver);
         sessionStore ??= new JsonTabSessionStore(Path.Combine(Path.GetTempPath(), $"tabs-vm-{Guid.NewGuid():N}.json"));
 
-        return new MainViewModel(
+        MainViewModel? mainVm = null;
+        var userScripts = new UserScriptsViewModel(
+            userScriptStore,
+            userScriptService,
+            importService,
+            conflictService,
+            dependencyResolver,
+            effectiveOptions,
+            new FakeDialogService(),
+            new Lazy<MainViewModel>(() => mainVm!));
+
+        mainVm = new MainViewModel(
             effectiveOptions,
             new NavigationService(new BrowserOptions
             {
@@ -40,7 +53,7 @@ public class MainViewModelTests
             sessionStore,
             new FavoritesViewModel(new FakeFavoritesStore()),
             new ExtensionsViewModel(extensionService, new FakeDialogService()),
-            new UserScriptsViewModel(userScriptStore, userScriptService, importService, conflictService, effectiveOptions, new FakeDialogService()),
+            userScripts,
             new UserScriptCommandsViewModel(
                 TestServiceFactory.CreateMenuCommandRegistry(),
                 new TabHostService(),
@@ -49,6 +62,8 @@ public class MainViewModelTests
             new DownloadsViewModel(new FakeDownloadHistoryStore(), effectiveOptions),
             new HistoryViewModel(new FakeBrowsingHistoryStore(), new BrowsingHistoryService(new FakeBrowsingHistoryStore(), effectiveOptions)),
             CreateSettingsViewModel(effectiveOptions));
+
+        return mainVm;
     }
 
     private static SettingsViewModel CreateSettingsViewModel(BrowserOptions options)

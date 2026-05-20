@@ -85,6 +85,8 @@ public partial class App : Application
             new JsonGmStorageStore(
                 sp.GetRequiredService<BrowserOptions>().GetDefaultGmStorageDirectory(),
                 sp.GetRequiredService<GmStorageQuota>()));
+        services.AddSingleton<IUserScriptDependencyCache, UserScriptDependencyCache>();
+        services.AddSingleton<IUserScriptDependencyResolver, UserScriptDependencyResolver>();
         services.AddSingleton<UserScriptBootstrapBuilder>();
         services.AddSingleton(_ => new HttpClient(new HttpClientHandler
         {
