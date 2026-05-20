@@ -1,6 +1,10 @@
 # Compiled output
 bin/
 obj/
+
+# dotnet publish output
+publish/
+publish-*/
 *.dll
 *.exe
 *.pdb

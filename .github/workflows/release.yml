@@ -1,0 +1,63 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Publish win-x64
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Publish
+        run: >
+          dotnet publish WebView22Browser.App
+          -c Release
+          -r win-x64
+          --self-contained false
+          -o ./publish
+
+      - name: Create zip
+        id: zip
+        shell: pwsh
+        run: |
+          $ref = "${{ github.ref }}"
+          if ($ref -like 'refs/tags/*') {
+            $version = "${{ github.ref_name }}"
+          } else {
+            $version = "manual-${{ github.run_number }}"
+          }
+          $zipName = "WebView22Browser-$version-win-x64.zip"
+          Compress-Archive -Path ./publish/* -DestinationPath $zipName -Force
+          "zip_name=$zipName" >> $env:GITHUB_OUTPUT
+
+      - name: Upload release asset
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.zip.outputs.zip_name }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifact (manual / non-tag)
+        if: "!startsWith(github.ref, 'refs/tags/')"
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.zip.outputs.zip_name }}
+          path: ${{ steps.zip.outputs.zip_name }}
+          retention-days: 30
