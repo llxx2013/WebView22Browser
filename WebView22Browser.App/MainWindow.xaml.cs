@@ -211,7 +211,16 @@ public partial class MainWindow : Window
     private void AddressBar_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Enter)
+        {
+            if (sender is System.Windows.Controls.TextBox addressBox)
+            {
+                // Commit pending edit before Navigate (binding uses LostFocus).
+                addressBox.GetBindingExpression(System.Windows.Controls.TextBox.TextProperty)?.UpdateSource();
+            }
+
             _viewModel.NavigateCommand.Execute(null);
+            e.Handled = true;
+        }
     }
 
     private void AddressBar_GotFocus(object sender, RoutedEventArgs e)
