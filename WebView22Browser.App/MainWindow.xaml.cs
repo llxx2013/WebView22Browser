@@ -84,9 +84,7 @@ public partial class MainWindow : Window
             if (_isClosing)
                 return;
 
-            var restoredSession = await _viewModel.InitializeAsync();
-            if (restoredSession)
-                _tabSleepService.SuppressNextWake();
+            await _viewModel.InitializeAsync();
 
             _viewModel.IsToolbarEnabled = true;
             _viewModel.NotifyTabReadyChanged();
@@ -218,6 +216,9 @@ public partial class MainWindow : Window
             return;
 
         _tabHostService.Register(host.Tab.TabId, host);
+
+        if (host.Tab.IsSelected && (host.Tab.IsSleeping || host.Tab.IsLightSuspended))
+            _ = host.WakeAsync();
     }
 
     private async void OnHostProfileReady(object? sender, CoreWebView2Profile profile)

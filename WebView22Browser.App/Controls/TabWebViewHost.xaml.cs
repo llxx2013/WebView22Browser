@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
@@ -91,6 +92,7 @@ public partial class TabWebViewHost : UserControl
     {
         if (oldTab != null)
         {
+            oldTab.PropertyChanged -= OnTabPropertyChanged;
             oldTab.NavigateRequested -= OnNavigateRequested;
             oldTab.GoBackRequested -= OnGoBackRequested;
             oldTab.GoForwardRequested -= OnGoForwardRequested;
@@ -101,6 +103,7 @@ public partial class TabWebViewHost : UserControl
 
         if (newTab != null)
         {
+            newTab.PropertyChanged += OnTabPropertyChanged;
             newTab.NavigateRequested += OnNavigateRequested;
             newTab.GoBackRequested += OnGoBackRequested;
             newTab.GoForwardRequested += OnGoForwardRequested;
@@ -111,6 +114,17 @@ public partial class TabWebViewHost : UserControl
 
         if (IsLoaded && Environment != null && newTab != null && !newTab.IsSleeping)
             _ = InitializeAsync();
+        else if (IsLoaded && newTab is { IsSelected: true } && (newTab.IsSleeping || newTab.IsLightSuspended))
+            _ = WakeAsync();
+    }
+
+    private void OnTabPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(BrowserTabViewModel.IsSelected) || Tab == null || !Tab.IsSelected)
+            return;
+
+        if ((Tab.IsSleeping || Tab.IsLightSuspended) && IsLoaded)
+            _ = WakeAsync();
     }
 
     private async void UserControl_Loaded(object sender, RoutedEventArgs e)
@@ -120,7 +134,10 @@ public partial class TabWebViewHost : UserControl
 
         if (Tab.IsSleeping || Tab.IsLightSuspended)
         {
-            EnterSleepPlaceholder();
+            if (Tab.IsSelected)
+                await WakeAsync();
+            else
+                EnterSleepPlaceholder();
             return;
         }
 

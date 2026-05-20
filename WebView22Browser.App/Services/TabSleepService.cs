@@ -18,7 +18,6 @@ public sealed class TabSleepService : IDisposable
     private readonly BrowserOptions _options;
     private DispatcherTimer? _timer;
     private bool _isStarted;
-    private bool _suppressNextWake;
     private bool _sessionSnapshotStale = true;
     private BrowserTabViewModel? _previousSelectedTab;
 
@@ -36,8 +35,6 @@ public sealed class TabSleepService : IDisposable
         _options = options;
         _mainViewModel.PropertyChanged += OnMainViewModelPropertyChanged;
     }
-
-    public void SuppressNextWake() => _suppressNextWake = true;
 
     public void Start(Dispatcher dispatcher)
     {
@@ -116,10 +113,7 @@ public sealed class TabSleepService : IDisposable
 
             selected.TouchActivity();
 
-            if (_suppressNextWake)
-                _suppressNextWake = false;
-            else
-                _ = WakeTabIfNeededAsync(selected);
+            _ = WakeTabIfNeededAsync(selected);
 
             MarkSessionDirty();
             _previousSelectedTab = selected;
