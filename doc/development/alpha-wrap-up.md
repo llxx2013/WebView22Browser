@@ -170,6 +170,11 @@ flowchart LR
 
 **出口标准**：可附在 GitHub Release 的「限制说明 + 验收勾选表」。
 
+**S0 交付物**（2026-05-20）：
+
+- [alpha-known-limitations.md](alpha-known-limitations.md) — Release Notes 限制说明草稿
+- [alpha-s0-acceptance.md](alpha-s0-acceptance.md) — 工程基线 + translate / 冒烟勾选记录
+
 ---
 
 ### S1 — 可靠性（最高 ROI 代码）
@@ -255,10 +260,10 @@ flowchart LR
 
 ### S0
 
-- [ ] Alpha 已知限制清单（Release Notes 草稿）
-- [ ] translate 手动验收
-- [ ] Windows 冒烟路径
-- [ ] `main` CI 全绿确认
+- [x] Alpha 已知限制清单（Release Notes 草稿）→ [alpha-known-limitations.md](alpha-known-limitations.md)
+- [x] translate 手动验收 → [alpha-s0-acceptance.md](alpha-s0-acceptance.md)（步骤 1–4 通过，步骤 5 待补）
+- [x] Windows 冒烟路径 → [alpha-s0-acceptance.md](alpha-s0-acceptance.md)（核心路径通过；历史/证书待 S3 前补）
+- [x] `main` CI 全绿确认 → [alpha-s0-acceptance.md](alpha-s0-acceptance.md)
 
 ### S1
 
@@ -295,3 +300,4 @@ flowchart LR
 | 日期 | 说明 |
 | --- | --- |
 | 2026-05-20 | 初版：基于 `main` 代码与文档梳理 |
+| 2026-05-20 | S0 完成：限制清单、验收记录、勾选表更新 |
