@@ -101,6 +101,7 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
                 <Button Grid.Column="0" Content="后退" Width="60" Margin="0,0,4,0"
@@ -159,8 +160,10 @@
                         Command="{Binding History.TogglePageCommand}"/>
                 <Button Grid.Column="11" Content="用户脚本" Width="80" Margin="0,0,4,0"
                         Command="{Binding UserScripts.TogglePanelCommand}"/>
-                <Button Grid.Column="12" Content="扩展程序" Width="80"
+                <Button Grid.Column="12" Content="扩展程序" Width="80" Margin="0,0,4,0"
                         Command="{Binding Extensions.TogglePanelCommand}"/>
+                <Button Grid.Column="13" Content="设置" Width="60"
+                        Command="{Binding Settings.TogglePageCommand}"/>
             </Grid>
 
             <views:DownloadsPanel x:Name="downloadsPanel"
@@ -177,7 +180,7 @@
             <Grid Margin="4">
                 <ItemsControl x:Name="browserTabsHost"
                               ItemsSource="{Binding Tabs}"
-                              Visibility="{Binding History.IsPageOpen, Converter={StaticResource BoolToVisibilityInverted}}">
+                              Visibility="{Binding IsBrowserContentVisible, Converter={StaticResource BoolToVisibility}}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <Grid/>
@@ -202,7 +205,9 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
                 <views:HistoryPage DataContext="{Binding History}"
-                                   Visibility="{Binding IsPageOpen, Converter={StaticResource BoolToVisibility}}"/>
+                                   Visibility="{Binding History.IsPageOpen, Converter={StaticResource BoolToVisibility}}"/>
+                <views:SettingsPage DataContext="{Binding Settings}"
+                                    Visibility="{Binding Settings.IsPageOpen, Converter={StaticResource BoolToVisibility}}"/>
             </Grid>
         </DockPanel>
 

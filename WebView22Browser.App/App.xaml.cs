@@ -8,32 +8,43 @@ using WebView22Browser.Core;
 using WebView22Browser.Core.Models;
 using WebView22Browser.Core.Services;
 using WebView22Browser.Core.Stores;
-
 namespace WebView22Browser.App;
 
 public partial class App : Application
 {
     public static IServiceProvider Services { get; private set; } = null!;
 
-    protected override void OnStartup(StartupEventArgs e)
+    protected override async void OnStartup(StartupEventArgs e)
     {
-        Services = ConfigureServices();
-        var mainViewModel = Services.GetRequiredService<MainViewModel>();
-        Services.GetRequiredService<WpfGmTabService>()
-            .SetOpenHandler(url => mainViewModel.OpenNewTab(url));
+        try
+        {
+            Services = await ConfigureServicesAsync();
+            var mainViewModel = Services.GetRequiredService<MainViewModel>();
+            Services.GetRequiredService<WpfGmTabService>()
+                .SetOpenHandler(url => mainViewModel.OpenNewTab(url));
 
-        var favoritesViewModel = Services.GetRequiredService<FavoritesViewModel>();
-        favoritesViewModel.NavigateToFavorite = item => mainViewModel.OpenFavoriteCommand.Execute(item);
+            var favoritesViewModel = Services.GetRequiredService<FavoritesViewModel>();
+            favoritesViewModel.NavigateToFavorite = item => mainViewModel.OpenFavoriteCommand.Execute(item);
 
-        var historyViewModel = Services.GetRequiredService<HistoryViewModel>();
-        historyViewModel.NavigateToUrl = mainViewModel.NavigateToUrl;
+            var historyViewModel = Services.GetRequiredService<HistoryViewModel>();
+            historyViewModel.NavigateToUrl = mainViewModel.NavigateToUrl;
 
-        var mainWindow = Services.GetRequiredService<MainWindow>();
-        mainWindow.Show();
-        base.OnStartup(e);
+            var mainWindow = Services.GetRequiredService<MainWindow>();
+            mainWindow.Show();
+            base.OnStartup(e);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"无法启动浏览器：{ex.Message}",
+                "启动失败",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            Shutdown(1);
+        }
     }
 
-    private static IServiceProvider ConfigureServices()
+    private static async Task<IServiceProvider> ConfigureServicesAsync()
     {
         var configuration = new ConfigurationBuilder()
             .SetBasePath(AppContext.BaseDirectory)
@@ -41,21 +52,27 @@ public partial class App : Application
             .Build();
 
         var browserSection = configuration.GetSection("Browser");
-        var options = new BrowserOptions
+        var appConfig = new BrowserAppConfig
         {
-            HomeUrl = browserSection["HomeUrl"] ?? "https://www.bing.com",
-            SearchUrlTemplate = browserSection["SearchUrlTemplate"] ?? "https://www.bing.com/search?q={0}",
-            TabSleepTimeoutMinutes = ParseInt(browserSection["TabSleepTimeoutMinutes"], 5),
-            TabSleepCheckIntervalSeconds = ParseInt(browserSection["TabSleepCheckIntervalSeconds"], 30),
-            RestoreLastSession = ParseBool(browserSection["RestoreLastSession"], true),
-            PressureElevatedMemoryPercent = ParseInt(browserSection["PressureElevatedMemoryPercent"], 70),
-            PressureHighMemoryPercent = ParseInt(browserSection["PressureHighMemoryPercent"], 85),
-            PressureHighCpuPercent = ParseInt(browserSection["PressureHighCpuPercent"], 80),
-            PressureSampleWindowSeconds = ParseInt(browserSection["PressureSampleWindowSeconds"], 15)
+            HomeUrl = browserSection["HomeUrl"],
+            SearchUrlTemplate = browserSection["SearchUrlTemplate"],
+            TabSleepTimeoutMinutes = ParseNullableInt(browserSection["TabSleepTimeoutMinutes"]),
+            TabSleepCheckIntervalSeconds = ParseNullableInt(browserSection["TabSleepCheckIntervalSeconds"]),
+            RestoreLastSession = ParseNullableBool(browserSection["RestoreLastSession"]),
+            PressureElevatedMemoryPercent = ParseNullableInt(browserSection["PressureElevatedMemoryPercent"]),
+            PressureHighMemoryPercent = ParseNullableInt(browserSection["PressureHighMemoryPercent"]),
+            PressureHighCpuPercent = ParseNullableInt(browserSection["PressureHighCpuPercent"]),
+            PressureSampleWindowSeconds = ParseNullableInt(browserSection["PressureSampleWindowSeconds"])
         };
 
+        var userSettingsStore = new JsonUserSettingsStore();
+        await userSettingsStore.LoadAsync().ConfigureAwait(false);
+        var options = BrowserOptionsLoader.Load(appConfig, userSettingsStore.Current);
+
         var services = new ServiceCollection();
+        services.AddSingleton(appConfig);
         services.AddSingleton(options);
+        services.AddSingleton<IUserSettingsStore>(userSettingsStore);
         services.AddSingleton<NavigationService>();
         services.AddSingleton<WebView2EnvironmentService>();
         services.AddSingleton<IFavoritesStore, JsonFavoritesStore>();
@@ -94,11 +111,13 @@ public partial class App : Application
         services.AddSingleton<DownloadsViewModel>();
         services.AddSingleton<IBrowsingHistoryService, BrowsingHistoryService>();
         services.AddSingleton<HistoryViewModel>();
+        services.AddSingleton<SettingsViewModel>();
         services.AddSingleton<IDownloadService, WebView2DownloadService>();
         services.AddSingleton<ITabHostService, TabHostService>();
         services.AddSingleton<ISystemPressureMonitor, SystemPressureMonitor>();
         services.AddSingleton<ITabSessionStore, JsonTabSessionStore>();
         services.AddSingleton<TabSleepService>();
+        services.AddSingleton<IRuntimeBrowserSettingsApplier>(sp => sp.GetRequiredService<TabSleepService>());
         services.AddSingleton<FavoritesViewModel>();
         services.AddSingleton<ExtensionsViewModel>();
         services.AddSingleton<UserScriptsViewModel>();
@@ -107,9 +126,9 @@ public partial class App : Application
         return services.BuildServiceProvider();
     }
 
-    private static int ParseInt(string? value, int defaultValue) =>
-        int.TryParse(value, out var parsed) ? parsed : defaultValue;
+    private static int? ParseNullableInt(string? value) =>
+        int.TryParse(value, out var parsed) ? parsed : null;
 
-    private static bool ParseBool(string? value, bool defaultValue) =>
-        bool.TryParse(value, out var parsed) ? parsed : defaultValue;
+    private static bool? ParseNullableBool(string? value) =>
+        bool.TryParse(value, out var parsed) ? parsed : null;
 }

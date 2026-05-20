@@ -170,9 +170,23 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.OemComma)
+        {
+            _viewModel.Settings.TogglePageCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+
         if (e.Key == Key.Escape && _viewModel.History.IsPageOpen)
         {
             _viewModel.History.ClosePageCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.Escape && _viewModel.Settings.IsPageOpen)
+        {
+            _viewModel.Settings.ClosePageCommand.Execute(null);
             e.Handled = true;
             return;
         }

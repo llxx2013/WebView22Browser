@@ -139,6 +139,12 @@ dotnet publish WebView22Browser.App -c Release -r win-x64 --self-contained false
 
 ## 应用配置
 
+### 应用内设置
+
+工具栏 **设置** 按钮或 `Ctrl+,` 打开设置页，修改项会写入 `%LocalAppData%\WebView22Browser\user-settings.json`。加载顺序为：`appsettings.json`（出厂默认）→ `user-settings.json`（用户覆盖）。多数选项保存后立即生效；**恢复上次会话** 需重启浏览器后才会影响启动行为。
+
+### appsettings.json
+
 编辑 `WebView22Browser.App/appsettings.json`：
 
 ```json
@@ -169,7 +175,7 @@ dotnet publish WebView22Browser.App -c Release -r win-x64 --self-contained false
 | `PressureHighCpuPercent` | 本进程 CPU 与 Elevated 内存组合达到 High 的辅助阈值 |
 | `PressureSampleWindowSeconds` | 压力采样 EMA 窗口（秒） |
 
-`BrowserOptions` 还支持代码级覆盖 `UserDataRoot`、各 JSON 持久化文件路径、`BrowsingHistoryMaxEntries`、`DownloadHistoryMaxEntries`、`TabHistoryMaxEntries`（测试与高级部署用）。
+`user-settings.json` 还可持久化 `BrowsingHistoryMaxEntries`、`DownloadHistoryMaxEntries`、`TabHistoryMaxEntries`（设置页可编辑）。`BrowserOptions` 仍支持代码级覆盖 `UserDataRoot`、各 JSON 持久化文件路径（测试与高级部署用，设置页仅只读展示）。
 
 ---
 
@@ -187,6 +193,7 @@ dotnet publish WebView22Browser.App -c Release -r win-x64 --self-contained false
 | `browsing-history.json` | 浏览访问历史（默认上限 2000 条） |
 | `userscripts.json` | 用户脚本（名称、`@match` / `@exclude`、`runAt`、仅顶层框架、`grants`、`connect`、`code`、启用状态） |
 | `tabs-session.json` | 上次会话的标签列表、选中标签、每标签 URL 历史栈（原子写入，供重启恢复） |
+| `user-settings.json` | 应用内设置页保存的用户偏好（覆盖 `appsettings.json`） |
 | `gm-storage/<scriptId>.json` | 各用户脚本的 GM 键值存储（JSON 可序列化值） |
 
 WebView2 环境创建时启用 `AreBrowserExtensionsEnabled = true`。

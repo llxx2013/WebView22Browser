@@ -43,7 +43,22 @@ public class MainViewModelTests
             new UserScriptsViewModel(userScriptStore, userScriptService, importService, conflictService, effectiveOptions, new FakeDialogService()),
             userScriptService,
             new DownloadsViewModel(new FakeDownloadHistoryStore(), effectiveOptions),
-            new HistoryViewModel(new FakeBrowsingHistoryStore(), new BrowsingHistoryService(new FakeBrowsingHistoryStore(), effectiveOptions)));
+            new HistoryViewModel(new FakeBrowsingHistoryStore(), new BrowsingHistoryService(new FakeBrowsingHistoryStore(), effectiveOptions)),
+            CreateSettingsViewModel(effectiveOptions));
+    }
+
+    private static SettingsViewModel CreateSettingsViewModel(BrowserOptions options)
+    {
+        var browsingStore = new FakeBrowsingHistoryStore();
+        return new SettingsViewModel(
+            options,
+            new BrowserAppConfig { HomeUrl = options.HomeUrl, SearchUrlTemplate = options.SearchUrlTemplate },
+            new FakeUserSettingsStore(),
+            new FakeDialogService(),
+            new FakeRuntimeBrowserSettingsApplier(),
+            new FakeDownloadHistoryStore(),
+            browsingStore,
+            new BrowsingHistoryService(browsingStore, options));
     }
 
     private static async Task<JsonTabSessionStore> CreateSessionStoreWithAsync(TabSessionFile session)

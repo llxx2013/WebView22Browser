@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using WebView22Browser.Core;
@@ -27,7 +28,8 @@ public partial class MainViewModel : ObservableObject
         UserScriptsViewModel userScripts,
         UserScriptService userScriptService,
         DownloadsViewModel downloads,
-        HistoryViewModel history)
+        HistoryViewModel history,
+        SettingsViewModel settings)
     {
         _options = options;
         _navigationService = navigationService;
@@ -38,7 +40,10 @@ public partial class MainViewModel : ObservableObject
         UserScripts = userScripts;
         Downloads = downloads;
         History = history;
+        Settings = settings;
         Tabs = new ObservableCollection<BrowserTabViewModel>();
+        History.PropertyChanged += OnOverlayPagePropertyChanged;
+        Settings.PropertyChanged += OnOverlayPagePropertyChanged;
         Downloads.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(DownloadsViewModel.ActiveCount))
@@ -58,6 +63,10 @@ public partial class MainViewModel : ObservableObject
     public DownloadsViewModel Downloads { get; }
 
     public HistoryViewModel History { get; }
+
+    public SettingsViewModel Settings { get; }
+
+    public bool IsBrowserContentVisible => !History.IsPageOpen && !Settings.IsPageOpen;
 
     [ObservableProperty]
     private BrowserTabViewModel? _selectedTab;
@@ -333,6 +342,22 @@ public partial class MainViewModel : ObservableObject
         OpenDevToolsCommand.NotifyCanExecuteChanged();
         AddFavoriteCommand.NotifyCanExecuteChanged();
         OpenFavoriteCommand.NotifyCanExecuteChanged();
+    }
+
+    private void OnOverlayPagePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(HistoryViewModel.IsPageOpen)
+            && e.PropertyName != nameof(SettingsViewModel.IsPageOpen))
+        {
+            return;
+        }
+
+        if (sender == History && History.IsPageOpen)
+            Settings.IsPageOpen = false;
+        else if (sender == Settings && Settings.IsPageOpen)
+            History.IsPageOpen = false;
+
+        OnPropertyChanged(nameof(IsBrowserContentVisible));
     }
 
     public void NotifyTabReadyChanged()

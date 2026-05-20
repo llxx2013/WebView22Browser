@@ -32,4 +32,6 @@ public sealed class BrowsingHistoryService : IBrowsingHistoryService
         await _store.SaveAsync(cancellationToken);
         HistoryChanged?.Invoke();
     }
+
+    public void NotifyHistoryChanged() => HistoryChanged?.Invoke();
 }

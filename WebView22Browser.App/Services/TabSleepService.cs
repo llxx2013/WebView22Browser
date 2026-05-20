@@ -9,13 +9,14 @@ using WebView22Browser.Core.Stores;
 
 namespace WebView22Browser.App.Services;
 
-public sealed class TabSleepService : IDisposable
+public sealed class TabSleepService : IRuntimeBrowserSettingsApplier, IDisposable
 {
     private readonly MainViewModel _mainViewModel;
     private readonly ITabHostService _tabHostService;
     private readonly ISystemPressureMonitor _pressureMonitor;
     private readonly ITabSessionStore _sessionStore;
     private readonly BrowserOptions _options;
+    private Dispatcher? _dispatcher;
     private DispatcherTimer? _timer;
     private bool _isStarted;
     private bool _sessionSnapshotStale = true;
@@ -38,6 +39,7 @@ public sealed class TabSleepService : IDisposable
 
     public void Start(Dispatcher dispatcher)
     {
+        _dispatcher = dispatcher;
         if (_isStarted || _options.TabSleepTimeoutMinutes <= 0)
             return;
 
@@ -63,6 +65,28 @@ public sealed class TabSleepService : IDisposable
 
         _pressureMonitor.Stop();
         _isStarted = false;
+    }
+
+    public void ApplyRuntimeSettings()
+    {
+        if (_dispatcher == null)
+            return;
+
+        if (_options.TabSleepTimeoutMinutes <= 0)
+        {
+            Stop();
+            return;
+        }
+
+        if (!_isStarted)
+        {
+            Start(_dispatcher);
+            return;
+        }
+
+        var intervalSeconds = Math.Max(1, _options.TabSleepCheckIntervalSeconds);
+        if (_timer != null)
+            _timer.Interval = TimeSpan.FromSeconds(intervalSeconds);
     }
 
     public void MarkSessionDirty()
