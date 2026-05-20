@@ -175,6 +175,36 @@ public class MainViewModelTests
     }
 
     [Fact]
+    public void ShowFindCommand_WhenToolbarDisabled_CannotExecute()
+    {
+        var vm = CreateSut();
+        vm.OpenNewTab();
+        vm.IsToolbarEnabled = false;
+
+        Assert.False(vm.ShowFindCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void ShowFindCommand_WhenTabSelectedAndToolbarEnabled_CanExecute()
+    {
+        var vm = CreateSut();
+        vm.OpenNewTab();
+        vm.IsToolbarEnabled = true;
+
+        Assert.True(vm.ShowFindCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void ShowFindCommand_WhenNoSelectedTab_CannotExecute()
+    {
+        var vm = CreateSut();
+        vm.IsToolbarEnabled = true;
+
+        Assert.Null(vm.SelectedTab);
+        Assert.False(vm.ShowFindCommand.CanExecute(null));
+    }
+
+    [Fact]
     public void NavigateCommand_ResolvesAddressOnSelectedTab()
     {
         var vm = CreateSut();

@@ -219,6 +219,9 @@
                                 </MenuItem.ItemContainerStyle>
                             </MenuItem>
                             <Separator/>
+                            <MenuItem Header="在页面中查找"
+                                      ToolTip="Ctrl+F"
+                                      Command="{Binding ShowFindCommand}"/>
                             <MenuItem Header="用户脚本"
                                       Command="{Binding UserScripts.TogglePanelCommand}"/>
                             <MenuItem Header="扩展程序"

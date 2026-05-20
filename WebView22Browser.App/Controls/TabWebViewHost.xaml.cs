@@ -33,6 +33,7 @@ public partial class TabWebViewHost : UserControl
     private int _processRecoveryAttempts;
     private bool _processRecoveryExhausted;
     private bool _hasShutdown;
+    private bool _isFindPending;
     private bool _isWired;
     private bool _middleClickOpensNewTab;
     private CancellationTokenSource? _initCts;
@@ -105,6 +106,7 @@ public partial class TabWebViewHost : UserControl
             oldTab.ReloadRequested -= OnReloadRequested;
             oldTab.StopRequested -= OnStopRequested;
             oldTab.OpenDevToolsRequested -= OnOpenDevToolsRequested;
+            oldTab.ShowFindRequested -= OnShowFindRequested;
         }
 
         if (newTab != null)
@@ -116,6 +118,7 @@ public partial class TabWebViewHost : UserControl
             newTab.ReloadRequested += OnReloadRequested;
             newTab.StopRequested += OnStopRequested;
             newTab.OpenDevToolsRequested += OnOpenDevToolsRequested;
+            newTab.ShowFindRequested += OnShowFindRequested;
         }
 
         if (IsLoaded && Environment != null && newTab != null && !newTab.IsSleeping)
@@ -676,6 +679,32 @@ public partial class TabWebViewHost : UserControl
     }
 
     private void OnOpenDevToolsRequested() => webView.CoreWebView2?.OpenDevToolsWindow();
+
+    private async void OnShowFindRequested()
+    {
+        if (_isFindPending || _hasShutdown || _isPermanentClose || Tab == null)
+            return;
+
+        _isFindPending = true;
+        try
+        {
+            if (Tab is { IsSleeping: true } or { IsLightSuspended: true })
+                await WakeAsync();
+
+            if (webView.CoreWebView2 is not { Find: { } find, Environment: { } environment })
+                return;
+
+            await find.StartAsync(environment.CreateFindOptions());
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[WebView22Browser] Find.StartAsync failed: {ex.Message}");
+        }
+        finally
+        {
+            _isFindPending = false;
+        }
+    }
 
     private void OnNavigationStarting(object? sender, CoreWebView2NavigationStartingEventArgs e)
     {

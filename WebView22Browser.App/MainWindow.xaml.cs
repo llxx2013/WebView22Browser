@@ -172,6 +172,14 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.F
+            && _viewModel.IsBrowserContentVisible)
+        {
+            _viewModel.ShowFindCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+
         if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.OemComma)
         {
             _viewModel.Settings.TogglePageCommand.Execute(null);

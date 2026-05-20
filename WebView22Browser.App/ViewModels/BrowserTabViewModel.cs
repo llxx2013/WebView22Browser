@@ -80,6 +80,8 @@ public partial class BrowserTabViewModel : ObservableObject
 
     public event Action? OpenDevToolsRequested;
 
+    public event Action? ShowFindRequested;
+
     public void RequestNavigate(string uri) => NavigateRequested?.Invoke(uri);
 
     public void RequestGoBack() => GoBackRequested?.Invoke();
@@ -91,6 +93,8 @@ public partial class BrowserTabViewModel : ObservableObject
     public void RequestStop() => StopRequested?.Invoke();
 
     public void RequestOpenDevTools() => OpenDevToolsRequested?.Invoke();
+
+    public void RequestShowFind() => ShowFindRequested?.Invoke();
 
     public void TouchActivity() => LastActiveUtc = DateTime.UtcNow;
 

@@ -204,6 +204,7 @@ public partial class MainViewModel : ObservableObject
         UpdateTabSelection();
         UpdateWindowTitle();
         ScriptCommands.Refresh(value);
+        ShowFindCommand.NotifyCanExecuteChanged();
     }
 
     private void UpdateTabSelection()
@@ -254,6 +255,9 @@ public partial class MainViewModel : ObservableObject
 
     [RelayCommand(CanExecute = nameof(CanUseBrowser))]
     private void OpenDevTools() => SelectedTab?.RequestOpenDevTools();
+
+    [RelayCommand(CanExecute = nameof(CanShowFind))]
+    private void ShowFind() => SelectedTab?.RequestShowFind();
 
     [RelayCommand(CanExecute = nameof(CanUseBrowser))]
     private async Task AddFavoriteAsync()
@@ -332,6 +336,8 @@ public partial class MainViewModel : ObservableObject
 
     private bool CanUseBrowser() => IsToolbarEnabled && SelectedTab?.IsWebViewReady == true;
 
+    private bool CanShowFind() => IsToolbarEnabled && SelectedTab != null;
+
     private bool CanCloseTab(BrowserTabViewModel? tab)
     {
         tab ??= SelectedTab;
@@ -348,6 +354,7 @@ public partial class MainViewModel : ObservableObject
         StopCommand.NotifyCanExecuteChanged();
         GoHomeCommand.NotifyCanExecuteChanged();
         OpenDevToolsCommand.NotifyCanExecuteChanged();
+        ShowFindCommand.NotifyCanExecuteChanged();
         AddFavoriteCommand.NotifyCanExecuteChanged();
         OpenFavoriteCommand.NotifyCanExecuteChanged();
     }
@@ -378,6 +385,7 @@ public partial class MainViewModel : ObservableObject
         StopCommand.NotifyCanExecuteChanged();
         GoHomeCommand.NotifyCanExecuteChanged();
         OpenDevToolsCommand.NotifyCanExecuteChanged();
+        ShowFindCommand.NotifyCanExecuteChanged();
         AddFavoriteCommand.NotifyCanExecuteChanged();
         OpenFavoriteCommand.NotifyCanExecuteChanged();
         CloseTabCommand.NotifyCanExecuteChanged();
