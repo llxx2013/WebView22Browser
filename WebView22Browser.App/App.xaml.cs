@@ -97,6 +97,7 @@ public partial class App : Application
         services.AddSingleton<WpfGmTabService>();
         services.AddSingleton<IGmTabService>(sp => sp.GetRequiredService<WpfGmTabService>());
         services.AddSingleton<IGmClipboardService, WpfGmClipboardService>();
+        services.AddSingleton<GmMenuCommandRegistry>();
         services.AddSingleton<UserScriptBridge>();
         services.AddSingleton<UserScriptService>();
         services.AddSingleton<ExtensionManifestReader>();
@@ -121,6 +122,7 @@ public partial class App : Application
         services.AddSingleton<FavoritesViewModel>();
         services.AddSingleton<ExtensionsViewModel>();
         services.AddSingleton<UserScriptsViewModel>();
+        services.AddSingleton<UserScriptCommandsViewModel>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();
         return services.BuildServiceProvider();

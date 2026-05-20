@@ -264,9 +264,9 @@ WebView2 环境创建时启用 `AreBrowserExtensionsEnabled = true`。
 4. **`@grant` 支持的 GM API**：
    - 存储：`GM_setValue`、`GM_getValue`、`GM_deleteValue`、`GM_listValues`
    - 网络：`GM_xmlhttpRequest`
-   - UI / 系统：`GM_log`、`GM_info`、`GM_notification`、`GM_addStyle`、`GM_openInTab`、`GM_setClipboard`（仅 `text`）
+   - UI / 系统：`GM_log`、`GM_info`、`GM_notification`、`GM_addStyle`、`GM_openInTab`、`GM_setClipboard`（仅 `text`）、`GM_registerMenuCommand`、`GM_unregisterMenuCommand`
    - 未声明 `@grant` 等同 `@grant none`，所有 GM 函数不可见
-   - `GM_registerMenuCommand` 当前为占位（调用抛错）
+   - `GM_registerMenuCommand`：在工具栏 **「脚本命令」** 菜单中列出当前标签页已注册的命令；点击后由宿主回调脚本内的 `onClick`（与页面共享 JS 世界，回调留在注入闭包中）
 5. **GM 存储语义**：
    - 注入时从 `gm-storage/<scriptId>.json` 预加载键值到闭包；读取走内存（同步）。
    - 写入先更内存，再 `postMessage` 异步落盘；宿主异常退出可能导致未持久化。
@@ -285,6 +285,7 @@ WebView2 环境创建时启用 `AreBrowserExtensionsEnabled = true`。
    - 共享 Cookie 风险：脚本可借用户登录态访问已 `@connect` 的站点（与 Tampermonkey 同级高权限能力）。
 8. **冲突检查**：在保存或导入脚本时，自动比对已启用 Chromium 扩展的 content script `matches`，列出可能在相同 URL 同时运行的项。
 9. 修改脚本列表后需**刷新已打开标签**方生效。
+10. **脚本命令菜单**：仅显示**当前选中且已就绪**标签页中、本页导航后各脚本通过 `GM_registerMenuCommand` 注册的项；页面导航开始时会清空旧注册，脚本在 `document-*` 阶段重新注册后方出现在菜单中。
 
 ---
 

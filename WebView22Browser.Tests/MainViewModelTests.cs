@@ -41,6 +41,10 @@ public class MainViewModelTests
             new FavoritesViewModel(new FakeFavoritesStore()),
             new ExtensionsViewModel(extensionService, new FakeDialogService()),
             new UserScriptsViewModel(userScriptStore, userScriptService, importService, conflictService, effectiveOptions, new FakeDialogService()),
+            new UserScriptCommandsViewModel(
+                TestServiceFactory.CreateMenuCommandRegistry(),
+                new TabHostService(),
+                userScriptStore),
             userScriptService,
             new DownloadsViewModel(new FakeDownloadHistoryStore(), effectiveOptions),
             new HistoryViewModel(new FakeBrowsingHistoryStore(), new BrowsingHistoryService(new FakeBrowsingHistoryStore(), effectiveOptions)),

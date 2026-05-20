@@ -392,6 +392,32 @@ public class UserScriptBootstrapBuilderTests
     }
 
     [Fact]
+    public void Build_GmRegisterMenuCommandGrant_GeneratesFunction()
+    {
+        var scripts = new[]
+        {
+            new UserScriptEntry
+            {
+                Enabled = true,
+                MatchPatterns = ["*://*/*"],
+                Grants = ["GM_registerMenuCommand"],
+                Code = "void 0;"
+            }
+        };
+
+        var artifact = CreateBuilder().Build(scripts);
+
+        Assert.NotNull(artifact);
+        Assert.Contains("api.GM_registerMenuCommand", artifact.JavaScript);
+        Assert.Contains("api.GM_unregisterMenuCommand", artifact.JavaScript);
+        Assert.Contains("gm.registerMenuCommand", artifact.JavaScript);
+        Assert.Contains("gm.unregisterMenuCommand", artifact.JavaScript);
+        Assert.Contains("pendingByMenuCommand", artifact.JavaScript);
+        Assert.Contains("menuClick", artifact.JavaScript);
+        Assert.DoesNotContain("GM_registerMenuCommand is not implemented", artifact.JavaScript);
+    }
+
+    [Fact]
     public void Build_NoStorageGrant_DoesNotEmbedPreloadedValues()
     {
         var id = Guid.NewGuid();

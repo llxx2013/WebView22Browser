@@ -26,6 +26,7 @@ public partial class MainViewModel : ObservableObject
         FavoritesViewModel favorites,
         ExtensionsViewModel extensions,
         UserScriptsViewModel userScripts,
+        UserScriptCommandsViewModel scriptCommands,
         UserScriptService userScriptService,
         DownloadsViewModel downloads,
         HistoryViewModel history,
@@ -38,6 +39,7 @@ public partial class MainViewModel : ObservableObject
         Favorites = favorites;
         Extensions = extensions;
         UserScripts = userScripts;
+        ScriptCommands = scriptCommands;
         Downloads = downloads;
         History = history;
         Settings = settings;
@@ -59,6 +61,8 @@ public partial class MainViewModel : ObservableObject
     public ExtensionsViewModel Extensions { get; }
 
     public UserScriptsViewModel UserScripts { get; }
+
+    public UserScriptCommandsViewModel ScriptCommands { get; }
 
     public DownloadsViewModel Downloads { get; }
 
@@ -197,6 +201,7 @@ public partial class MainViewModel : ObservableObject
         value?.TouchActivity();
         UpdateTabSelection();
         UpdateWindowTitle();
+        ScriptCommands.Refresh(value);
     }
 
     private void UpdateTabSelection()
@@ -333,6 +338,7 @@ public partial class MainViewModel : ObservableObject
 
     partial void OnIsToolbarEnabledChanged(bool value)
     {
+        ScriptCommands.IsToolbarEnabled = value;
         NavigateCommand.NotifyCanExecuteChanged();
         GoBackCommand.NotifyCanExecuteChanged();
         GoForwardCommand.NotifyCanExecuteChanged();
@@ -362,6 +368,7 @@ public partial class MainViewModel : ObservableObject
 
     public void NotifyTabReadyChanged()
     {
+        ScriptCommands.Refresh(SelectedTab);
         NavigateCommand.NotifyCanExecuteChanged();
         GoBackCommand.NotifyCanExecuteChanged();
         GoForwardCommand.NotifyCanExecuteChanged();

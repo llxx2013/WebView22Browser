@@ -92,9 +92,20 @@ public sealed class UserScriptBootstrapBuilder
               window.__wv2browserBootstrap = true;
 
               var pendingByRequest = {};
+              var pendingByMenuCommand = {};
               function dispatchFromHost(payload) {
                 try {
-                  if (!payload || typeof payload.requestId !== 'string') return;
+                  if (!payload) return;
+                  if (payload.kind === 'menuClick'
+                    && typeof payload.scriptId === 'string'
+                    && typeof payload.commandId === 'number') {
+                    var menuKey = payload.scriptId + ':' + payload.commandId;
+                    var menuEntry = pendingByMenuCommand[menuKey];
+                    if (!menuEntry || menuEntry.scriptId !== payload.scriptId) return;
+                    menuEntry.handler();
+                    return;
+                  }
+                  if (typeof payload.requestId !== 'string') return;
                   var entry = pendingByRequest[payload.requestId];
                   if (!entry) return;
                   if (entry.scriptId !== payload.scriptId) return;
@@ -109,6 +120,11 @@ public sealed class UserScriptBootstrapBuilder
                   for (var k in pendingByRequest) {
                     if (Object.prototype.hasOwnProperty.call(pendingByRequest, k)) {
                       delete pendingByRequest[k];
+                    }
+                  }
+                  for (var mk in pendingByMenuCommand) {
+                    if (Object.prototype.hasOwnProperty.call(pendingByMenuCommand, mk)) {
+                      delete pendingByMenuCommand[mk];
                     }
                   }
                 }, { once: true });
@@ -250,8 +266,31 @@ public sealed class UserScriptBootstrapBuilder
                   };
                 }
                 if (grantSet['GM_registerMenuCommand']) {
-                  api.GM_registerMenuCommand = function () {
-                    throw new Error('[wv2browser] GM_registerMenuCommand is not implemented yet.');
+                  var menuCommandSeq = 0;
+                  api.GM_registerMenuCommand = function (caption, onClick, accessKey) {
+                    if (typeof caption !== 'string') throw new Error('GM_registerMenuCommand: caption must be string');
+                    if (typeof onClick !== 'function') throw new Error('GM_registerMenuCommand: onClick must be function');
+                    menuCommandSeq += 1;
+                    var commandId = menuCommandSeq;
+                    var menuKey = scriptId + ':' + commandId;
+                    pendingByMenuCommand[menuKey] = {
+                      scriptId: scriptId,
+                      handler: function () {
+                        try { onClick(); } catch (e) { console.error('[userscript]', scriptId, e); }
+                      }
+                    };
+                    postGm('gm.registerMenuCommand', {
+                      commandId: commandId,
+                      caption: caption,
+                      accessKey: accessKey != null && accessKey !== '' ? String(accessKey) : ''
+                    });
+                    return commandId;
+                  };
+                  api.GM_unregisterMenuCommand = function (commandId) {
+                    if (typeof commandId !== 'number') return;
+                    var unregisterKey = scriptId + ':' + commandId;
+                    delete pendingByMenuCommand[unregisterKey];
+                    postGm('gm.unregisterMenuCommand', { commandId: commandId });
                   };
                 }
                 return Object.freeze(api);

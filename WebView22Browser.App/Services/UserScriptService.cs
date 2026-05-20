@@ -98,5 +98,6 @@ public sealed class UserScriptService
     {
         _registrationIds.TryRemove(core, out _);
         _bridge.ClearNonces(core);
+        _bridge.ClearMenuCommands(core);
     }
 }

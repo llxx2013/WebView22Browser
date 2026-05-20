@@ -424,6 +424,7 @@ public partial class TabWebViewHost : UserControl
         if (webView.CoreWebView2 is not { } core)
             return;
 
+        UserScriptBridge?.ClearMenuCommands(core);
         UserScriptBridge?.Wire(core);
 
         if (UserScriptService != null)
@@ -665,6 +666,9 @@ public partial class TabWebViewHost : UserControl
     {
         if (_isPermanentClose || Tab == null)
             return;
+
+        if (webView.CoreWebView2 is { } core)
+            UserScriptBridge?.ClearMenuCommands(core);
 
         Tab.TouchActivity();
         Tab.IsLoading = true;

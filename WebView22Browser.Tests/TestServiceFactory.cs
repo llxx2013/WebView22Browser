@@ -16,5 +16,8 @@ internal static class TestServiceFactory
                 new GmXhrService(new HttpClient(new HttpClientHandler { UseCookies = false })),
                 new JsonUserScriptStore(Path.Combine(Path.GetTempPath(), $"xhr-bridge-{Guid.NewGuid():N}.json"))),
             new WpfGmTabService(),
-            new WpfGmClipboardService());
+            new WpfGmClipboardService(),
+            new GmMenuCommandRegistry());
+
+    public static GmMenuCommandRegistry CreateMenuCommandRegistry() => new();
 }
