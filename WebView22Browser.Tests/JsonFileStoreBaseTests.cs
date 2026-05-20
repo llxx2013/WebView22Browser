@@ -35,7 +35,9 @@ public class JsonFileStoreBaseTests
         {
             await JsonFileStoreBase.WriteAtomicAsync(path, new SampleDto { Name = "original" }, JsonOptions);
 
-            await Assert.ThrowsAsync<DirectoryNotFoundException>(() =>
+            // Parent path is an existing file (not a directory); OS throws IOException on
+            // Windows and may throw DirectoryNotFoundException on Linux.
+            await Assert.ThrowsAnyAsync<Exception>(() =>
                 JsonFileStoreBase.WriteAtomicAsync(invalidDir, new SampleDto { Name = "broken" }, JsonOptions));
 
             var reloaded = await JsonSerializer.DeserializeAsync<SampleDto>(File.OpenRead(path));
