@@ -10,6 +10,7 @@ using WebView22Browser.App.Services;
 using WebView22Browser.App.ViewModels;
 using WebView22Browser.App.WebView2;
 using WebView22Browser.Core;
+using WebView22Browser.Core.Models;
 using WebView22Browser.Core.Services;
 
 namespace WebView22Browser.App.Controls;
@@ -38,6 +39,9 @@ public partial class TabWebViewHost : UserControl
     private bool _isRestoringHistory;
     private bool _contentRevealed;
     private TaskCompletionSource<bool>? _navigationWaiter;
+    private bool _securityDevToolsEnabled;
+    private CoreWebView2DevToolsProtocolEventReceiver? _securityEventReceiver;
+    private EventHandler<CoreWebView2DevToolsProtocolEventReceivedEventArgs>? _securityStateHandler;
 
     public TabWebViewHost()
     {
@@ -380,6 +384,8 @@ public partial class TabWebViewHost : UserControl
         if (Tab != null)
             Tab.IsPlayingAudio = core.IsDocumentPlayingAudio;
 
+        _ = EnableSecurityMonitoringAsync(core);
+
         _isWired = true;
     }
 
@@ -405,6 +411,13 @@ public partial class TabWebViewHost : UserControl
 
         if (Tab != null && resetPlaybackState)
             Tab.IsPlayingAudio = false;
+
+        if (_securityEventReceiver != null && _securityStateHandler != null)
+            _securityEventReceiver.DevToolsProtocolEventReceived -= _securityStateHandler;
+
+        _securityDevToolsEnabled = false;
+        _securityEventReceiver = null;
+        _securityStateHandler = null;
 
         _middleClickOpensNewTab = false;
         _middleClickResetCts?.Cancel();
@@ -700,6 +713,10 @@ public partial class TabWebViewHost : UserControl
             RecordNavigationIfNeeded();
             _ = RecordBrowsingHistoryAsync();
         }
+        else
+        {
+            Tab.SecurityState = AddressBarSecurityState.Unknown;
+        }
 
         CompleteNavigationWait(e.IsSuccess);
 
@@ -731,8 +748,12 @@ public partial class TabWebViewHost : UserControl
         if (_isPermanentClose || Tab == null || webView.Source == null)
             return;
 
-        Tab.Address = webView.Source.ToString();
+        var source = webView.Source.ToString();
+        Tab.Address = source;
         Tab.TouchActivity();
+
+        if (!_securityDevToolsEnabled || !SecurityStateDevToolsParser.UsesHttpSecurityScheme(source))
+            ApplySchemeSecurityFallback();
     }
 
     private void OnHistoryChanged(object? sender, object e) => UpdateHistoryState();
@@ -860,13 +881,55 @@ public partial class TabWebViewHost : UserControl
         if (DialogService == null)
         {
             e.Action = CoreWebView2ServerCertificateErrorAction.Cancel;
+            if (Tab != null)
+                Tab.SecurityState = AddressBarSecurityState.Dangerous;
             return;
         }
 
+        // WebView2 only exposes AlwaysAllow (session-scoped cache) or Cancel — no per-navigation Allow.
         var allow = DialogService.PromptCertificateError(e.RequestUri, e.ErrorStatus.ToString());
         e.Action = allow
             ? CoreWebView2ServerCertificateErrorAction.AlwaysAllow
             : CoreWebView2ServerCertificateErrorAction.Cancel;
+
+        if (!allow && Tab != null)
+            Tab.SecurityState = AddressBarSecurityState.Dangerous;
+    }
+
+    private async Task EnableSecurityMonitoringAsync(CoreWebView2 core)
+    {
+        if (_securityDevToolsEnabled || Tab == null)
+            return;
+
+        try
+        {
+            await core.CallDevToolsProtocolMethodAsync("Security.enable", "{}");
+            _securityEventReceiver = core.GetDevToolsProtocolEventReceiver("Security.visibleSecurityStateChanged");
+            _securityStateHandler = OnVisibleSecurityStateChanged;
+            _securityEventReceiver.DevToolsProtocolEventReceived += _securityStateHandler;
+            _securityDevToolsEnabled = true;
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[WebView22Browser] Security.enable failed: {ex.Message}");
+            ApplySchemeSecurityFallback();
+        }
+    }
+
+    private void OnVisibleSecurityStateChanged(object? sender, CoreWebView2DevToolsProtocolEventReceivedEventArgs e)
+    {
+        if (Tab == null)
+            return;
+
+        Tab.SecurityState = SecurityStateDevToolsParser.ParseVisibleSecurityStateChanged(e.ParameterObjectAsJson);
+    }
+
+    private void ApplySchemeSecurityFallback()
+    {
+        if (Tab == null)
+            return;
+
+        Tab.SecurityState = SecurityStateDevToolsParser.FromUriScheme(webView.Source?.ToString());
     }
 
     private async void OnPermissionRequested(object? sender, CoreWebView2PermissionRequestedEventArgs e)

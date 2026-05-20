@@ -15,6 +15,8 @@
     <Window.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibility"/>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityInverted" Invert="True"/>
+        <converters:SecurityStateToGlyphConverter x:Key="SecurityStateToGlyph"/>
+        <converters:SecurityStateToToolTipConverter x:Key="SecurityStateToToolTip"/>
     </Window.Resources>
     <Grid>
         <Grid.ColumnDefinitions>
@@ -32,6 +34,7 @@
                      Margin="4,4,4,0"
                      ItemsSource="{Binding Tabs}"
                      SelectedItem="{Binding SelectedTab}"
+                     BorderBrush="#E0E0E0"
                      BorderThickness="0,0,0,1"
                      Background="Transparent">
                 <ListBox.ItemsPanel>
@@ -40,10 +43,7 @@
                     </ItemsPanelTemplate>
                 </ListBox.ItemsPanel>
                 <ListBox.ItemContainerStyle>
-                    <Style TargetType="ListBoxItem">
-                        <Setter Property="Padding" Value="8,4"/>
-                        <Setter Property="Margin" Value="0,0,2,0"/>
-                    </Style>
+                    <Style TargetType="ListBoxItem" BasedOn="{StaticResource TabItemChromeStyle}"/>
                 </ListBox.ItemContainerStyle>
                 <ListBox.ItemTemplate>
                     <DataTemplate DataType="{x:Type vm:BrowserTabViewModel}">
@@ -78,7 +78,9 @@
                             </TextBlock>
                             <Button Content="×"
                                     Margin="6,0,0,0"
-                                    Padding="4,0"
+                                    Padding="2,0"
+                                    Style="{StaticResource ToolbarIconButtonStyle}"
+                                    ToolTip="关闭标签页"
                                     Command="{Binding DataContext.CloseTabCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                     CommandParameter="{Binding}"/>
                         </StackPanel>
@@ -86,98 +88,146 @@
                 </ListBox.ItemTemplate>
             </ListBox>
 
-            <Grid DockPanel.Dock="Top" Margin="4">
+            <Grid DockPanel.Dock="Top" Margin="4,0,4,4">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <Button Grid.Column="0" Content="后退" Width="60" Margin="0,0,4,0"
-                        Command="{Binding GoBackCommand}"/>
-                <Button Grid.Column="1" Content="前进" Width="60" Margin="0,0,4,0"
-                        Command="{Binding GoForwardCommand}"/>
-                <Button Grid.Column="2" Content="刷新" Width="60" Margin="0,0,4,0"
-                        Command="{Binding ReloadCommand}"/>
-                <Button Grid.Column="3" Content="停止" Width="60" Margin="0,0,4,0"
-                        Command="{Binding StopCommand}"
-                        IsEnabled="{Binding SelectedTab.IsLoading}"/>
-                <Button Grid.Column="4" Content="主页" Width="60" Margin="0,0,4,0"
-                        Command="{Binding GoHomeCommand}"/>
-                <Button Grid.Column="5" Content="☆ 收藏" Width="72" Margin="0,0,4,0"
-                        Command="{Binding AddFavoriteCommand}"/>
-                <TextBox Grid.Column="6"
-                         Margin="0,0,4,0"
-                         VerticalContentAlignment="Center"
-                         Text="{Binding SelectedTab.Address, UpdateSourceTrigger=LostFocus}"
-                         IsEnabled="{Binding IsToolbarEnabled}"
-                         KeyDown="AddressBar_KeyDown"
-                         GotFocus="AddressBar_GotFocus"/>
-                <Button Grid.Column="7" Content="转到" Width="60" Margin="0,0,4,0"
-                        Command="{Binding NavigateCommand}"/>
-                <Button Grid.Column="8" Content="收藏夹" Width="72" Margin="0,0,4,0"
-                        Command="{Binding Favorites.TogglePanelCommand}"/>
-                <Button Grid.Column="9" Width="72" Margin="0,0,4,0"
-                        Command="{Binding Downloads.TogglePanelCommand}">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="下载" VerticalAlignment="Center"/>
-                        <Border Background="#D32F2F"
-                                CornerRadius="8"
-                                Padding="4,0"
-                                Margin="4,0,0,0"
-                                MinWidth="16"
-                                VerticalAlignment="Center">
-                            <Border.Style>
-                                <Style TargetType="Border">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Downloads.HasActiveDownloads}" Value="True">
-                                            <Setter Property="Visibility" Value="Visible"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Border.Style>
-                            <TextBlock Text="{Binding Downloads.ActiveCount}"
-                                       Foreground="White"
-                                       FontSize="10"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"/>
-                        </Border>
-                    </StackPanel>
-                </Button>
-                <Button Grid.Column="10" Content="历史记录" Width="80" Margin="0,0,4,0"
-                        Command="{Binding History.TogglePageCommand}"/>
-                <Menu Grid.Column="11" Margin="0,0,4,0" VerticalAlignment="Center"
-                      IsEnabled="{Binding ScriptCommands.IsMenuEnabled}">
-                    <MenuItem Header="脚本命令" ItemsSource="{Binding ScriptCommands.Items}">
-                        <MenuItem.ItemContainerStyle>
-                            <Style TargetType="MenuItem">
-                                <Setter Property="Header" Value="{Binding DisplayName}"/>
-                                <Setter Property="Command"
-                                        Value="{Binding DataContext.ScriptCommands.RunMenuCommandCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
-                                <Setter Property="CommandParameter" Value="{Binding}"/>
-                            </Style>
-                        </MenuItem.ItemContainerStyle>
-                    </MenuItem>
-                </Menu>
-                <Button Grid.Column="12" Content="用户脚本" Width="80" Margin="0,0,4,0"
-                        Command="{Binding UserScripts.TogglePanelCommand}"/>
-                <Button Grid.Column="13" Content="扩展程序" Width="80" Margin="0,0,4,0"
-                        Command="{Binding Extensions.TogglePanelCommand}"/>
-                <Button Grid.Column="14" Content="设置" Width="60"
-                        Command="{Binding Settings.TogglePageCommand}"/>
+                <!-- 左侧：基础导航 -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <Button Content="←"
+                            Style="{StaticResource ToolbarIconButtonStyle}"
+                            Margin="0,0,2,0"
+                            ToolTip="后退"
+                            Command="{Binding GoBackCommand}"/>
+                    <Button Content="→"
+                            Style="{StaticResource ToolbarIconButtonStyle}"
+                            Margin="0,0,2,0"
+                            ToolTip="前进"
+                            Command="{Binding GoForwardCommand}"/>
+                    <Grid Margin="0,0,2,0" Width="32">
+                        <Button Content="↻"
+                                Style="{StaticResource ToolbarIconButtonStyle}"
+                                ToolTip="刷新"
+                                Command="{Binding ReloadCommand}"
+                                Visibility="{Binding SelectedTab.IsLoading, Converter={StaticResource BoolToVisibilityInverted}}"/>
+                        <Button Content="✕"
+                                Style="{StaticResource ToolbarIconButtonStyle}"
+                                ToolTip="停止"
+                                Command="{Binding StopCommand}"
+                                Visibility="{Binding SelectedTab.IsLoading, Converter={StaticResource BoolToVisibility}}"/>
+                    </Grid>
+                    <Button Content="⌂"
+                            Style="{StaticResource ToolbarIconButtonStyle}"
+                            Margin="0,0,2,0"
+                            ToolTip="主页"
+                            Command="{Binding GoHomeCommand}"/>
+                </StackPanel>
+
+                <!-- 中间：复合地址栏 -->
+                <Border Grid.Column="1"
+                        Margin="4,0,0,0"
+                        Style="{StaticResource AddressBarChromeBorder}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0"
+                                   Margin="4,0,2,0"
+                                   VerticalAlignment="Center"
+                                   FontSize="13"
+                                   Text="{Binding SelectedTab.SecurityState, Converter={StaticResource SecurityStateToGlyph}}"
+                                   ToolTip="{Binding SelectedTab.SecurityState, Converter={StaticResource SecurityStateToToolTip}}"/>
+                        <TextBox Grid.Column="1"
+                                 Style="{StaticResource AddressBarTextBoxStyle}"
+                                 Text="{Binding SelectedTab.Address, UpdateSourceTrigger=LostFocus}"
+                                 IsEnabled="{Binding IsToolbarEnabled}"
+                                 KeyDown="AddressBar_KeyDown"
+                                 GotFocus="AddressBar_GotFocus"/>
+                        <Button Grid.Column="2"
+                                Content="☆"
+                                Style="{StaticResource ToolbarIconButtonStyle}"
+                                MinWidth="28"
+                                ToolTip="添加到收藏"
+                                Command="{Binding AddFavoriteCommand}"/>
+                    </Grid>
+                </Border>
+
+                <!-- 右侧：快捷操作 + 更多菜单 -->
+                <StackPanel Grid.Column="2"
+                            Orientation="Horizontal"
+                            Margin="4,0,0,0"
+                            VerticalAlignment="Center">
+                    <Button Content="☰"
+                            Style="{StaticResource ToolbarIconButtonStyle}"
+                            Margin="0,0,2,0"
+                            ToolTip="收藏夹"
+                            Command="{Binding Favorites.TogglePanelCommand}"/>
+                    <Button Style="{StaticResource ToolbarIconButtonStyle}"
+                            Margin="0,0,2,0"
+                            ToolTip="下载"
+                            Command="{Binding Downloads.TogglePanelCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="↓" VerticalAlignment="Center" FontSize="14"/>
+                            <Border Background="#D32F2F"
+                                    CornerRadius="8"
+                                    Padding="4,0"
+                                    Margin="2,0,0,0"
+                                    MinWidth="16"
+                                    VerticalAlignment="Center">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Downloads.HasActiveDownloads}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <TextBlock Text="{Binding Downloads.ActiveCount}"
+                                           Foreground="White"
+                                           FontSize="10"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                            </Border>
+                        </StackPanel>
+                    </Button>
+                    <Button Content="◷"
+                            Style="{StaticResource ToolbarIconButtonStyle}"
+                            Margin="0,0,2,0"
+                            ToolTip="历史记录"
+                            Command="{Binding History.TogglePageCommand}"/>
+                    <Menu Style="{StaticResource ToolbarMenuStyle}">
+                        <MenuItem Header="⋯"
+                                  ToolTip="更多选项"
+                                  Padding="8,4">
+                            <MenuItem Header="脚本命令"
+                                      IsEnabled="{Binding ScriptCommands.IsMenuEnabled}"
+                                      ItemsSource="{Binding ScriptCommands.Items}">
+                                <MenuItem.ItemContainerStyle>
+                                    <Style TargetType="MenuItem">
+                                        <Setter Property="Header" Value="{Binding DisplayName}"/>
+                                        <Setter Property="Command"
+                                                Value="{Binding DataContext.ScriptCommands.RunMenuCommandCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                        <Setter Property="CommandParameter" Value="{Binding}"/>
+                                    </Style>
+                                </MenuItem.ItemContainerStyle>
+                            </MenuItem>
+                            <Separator/>
+                            <MenuItem Header="用户脚本"
+                                      Command="{Binding UserScripts.TogglePanelCommand}"/>
+                            <MenuItem Header="扩展程序"
+                                      Command="{Binding Extensions.TogglePanelCommand}"/>
+                            <MenuItem Header="系统设置"
+                                      Command="{Binding Settings.TogglePageCommand}"/>
+                        </MenuItem>
+                    </Menu>
+                </StackPanel>
             </Grid>
 
             <views:DownloadsPanel x:Name="downloadsPanel"

@@ -51,7 +51,7 @@ public sealed class WpfDialogService : IDialogService
 
     public bool PromptCertificateError(string uri, string errorMessage) =>
         Confirm(
-            $"站点证书存在问题：\n{errorMessage}\n\n地址：{uri}\n\n是否仍要继续访问？\n（同一会话内同一主机可能不再提示；重启应用后会再次询问。仅建议在开发/测试环境使用）",
+            $"站点证书存在问题：\n{errorMessage}\n\n地址：{uri}\n\n是否仍要继续访问？\n（当前应用会话内，对同一主机的相同证书将不再提示；重启应用后会再次询问。仅建议在开发/测试环境使用）",
             "证书错误");
 
     public bool PromptPermission(CoreWebView2PermissionKind kind, string origin)

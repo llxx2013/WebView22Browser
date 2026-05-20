@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using WebView22Browser.Core.Models;
 
 namespace WebView22Browser.App.ViewModels;
 
@@ -44,6 +45,9 @@ public partial class BrowserTabViewModel : ObservableObject
 
     [ObservableProperty]
     private int _activeDownloadCount;
+
+    [ObservableProperty]
+    private AddressBarSecurityState _securityState = AddressBarSecurityState.Unknown;
 
     public DateTime LastActiveUtc { get; private set; } = DateTime.UtcNow;
 
