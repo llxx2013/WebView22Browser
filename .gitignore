@@ -1,0 +1,30 @@
+# Compiled output
+bin/
+obj/
+*.dll
+*.exe
+*.pdb
+*.xml
+
+# WebView2 runtime cache
+**/UserData/**/WebView2/
+**/UserData/**/EBWebView/
+
+# .NET Core build artifacts
+*.deps.json
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+
+# Resharper
+_ReSharper*/
+*.resharper
+
+# NuGet packages
+packages/
+
+# Local configuration overrides
+appsettings.*.json
+!appsettings.json

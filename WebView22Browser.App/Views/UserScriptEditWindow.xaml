@@ -1,0 +1,60 @@
+<Window x:Class="WebView22Browser.App.Views.UserScriptEditWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="编辑用户脚本"
+        Height="640"
+        Width="600"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="90"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="60"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="名称"/>
+        <TextBox Grid.Row="1" x:Name="nameBox" Margin="0,4,0,8"/>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
+            <TextBlock Text="运行时机 (@run-at)" VerticalAlignment="Center"/>
+            <ComboBox x:Name="runAtBox" Width="160" Margin="12,0,0,0"/>
+            <CheckBox x:Name="topFrameBox" Content="仅顶层框架 (@noframes)" Margin="16,0,0,0" VerticalAlignment="Center"/>
+        </StackPanel>
+
+        <TextBlock Grid.Row="3" Text="匹配规则（每行一个）"/>
+        <TextBox Grid.Row="4" x:Name="patternsBox"
+                 Margin="0,4,0,8"
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap"
+                 VerticalScrollBarVisibility="Auto"/>
+
+        <TextBlock Grid.Row="5" Text="排除规则 (@exclude，每行一个）"/>
+        <TextBox Grid.Row="6" x:Name="excludeBox"
+                 Margin="0,4,0,8"
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap"
+                 VerticalScrollBarVisibility="Auto"/>
+
+        <TextBlock Grid.Row="7" Text="脚本代码（JavaScript）"/>
+        <TextBox Grid.Row="8" x:Name="codeBox"
+                 Margin="0,4,0,12"
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap"
+                 VerticalScrollBarVisibility="Auto"
+                 FontFamily="Consolas"/>
+
+        <StackPanel Grid.Row="9" Orientation="Horizontal" HorizontalAlignment="Right">
+            <CheckBox x:Name="enabledBox" Content="启用" Margin="0,0,16,0" VerticalAlignment="Center"/>
+            <Button Content="取消" Width="80" Margin="0,0,8,0" IsCancel="True" Click="OnCancel"/>
+            <Button Content="保存" Width="80" IsDefault="True" Click="OnSave"/>
+        </StackPanel>
+    </Grid>
+</Window>
