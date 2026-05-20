@@ -219,9 +219,9 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
                 <views:HistoryPage DataContext="{Binding History}"
-                                   Visibility="{Binding History.IsPageOpen, Converter={StaticResource BoolToVisibility}}"/>
+                                   Visibility="{Binding IsPageOpen, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed, TargetNullValue=Collapsed}"/>
                 <views:SettingsPage DataContext="{Binding Settings}"
-                                    Visibility="{Binding Settings.IsPageOpen, Converter={StaticResource BoolToVisibility}}"/>
+                                    Visibility="{Binding IsPageOpen, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed, TargetNullValue=Collapsed}"/>
             </Grid>
         </DockPanel>
 
