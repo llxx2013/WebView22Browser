@@ -19,6 +19,7 @@
 | `FakeDialogService` | 对话框 |
 | `FakeRuntimeBrowserSettingsApplier` | 运行时设置应用 |
 | `FakeGmXhrReplyChannel` | GM XHR 回传通道 |
+| `FakeTabWebViewHost` | 标签 WebView 宿主能力（休眠单测） |
 
 组合测试范例：[MainViewModelTests.cs](../../WebView22Browser.Tests/MainViewModelTests.cs)（临时 JSON 路径 + 上述 Fakes 构建完整 `MainViewModel`）。
 
@@ -46,7 +47,7 @@
 | GM | `JsonGmStorageStoreTests`、`GmStorageMessageHandlerTests`、`GmXhrServiceTests`、`GmXhrMessageHandlerTests`、`GmMenuCommandRegistryTests` | 存储配额、XHR |
 | 历史 | `JsonBrowsingHistoryStoreTests`、`BrowsingHistoryPolicyTests`、`BrowsingHistoryGrouperTests`、`BrowsingHistorySearchTests`、`BrowsingHistoryTitleFormatterTests`、`HistoryViewModelTests` | 写入、分组、搜索 |
 | 下载 | `JsonDownloadHistoryStoreTests`、`DownloadItemViewModelTests`、`DownloadProgressFormatterTests` | 历史与进度文案 |
-| 标签 / 休眠 / 会话 | `TabSleepPolicyTests`、`TabSleepPolicyDecideTests`、`TabNavigationHistoryTests`、`TabHistoryRestorerTests`、`TabSessionSnapshotBuilderTests`、`JsonTabSessionStoreTests` | 休眠判定、历史栈、会话 |
+| 标签 / 休眠 / 会话 | `TabSleepPolicyTests`、`TabSleepPolicyDecideTests`、`TabSleepCycleProcessorTests`、`TabNavigationHistoryTests`、`TabHistoryRestorerTests`、`TabSessionSnapshotBuilderTests`、`JsonTabSessionStoreTests` | 休眠判定、定时 tick、历史栈、会话 |
 | 主 VM / 配置 | `MainViewModelTests`、`BrowserOptionsTests`、`BrowserOptionsLoaderTests`、`BrowserSettingsValidatorTests`、`JsonUserSettingsStoreTests`、`JsonUserSettingsStoreLoadTests`、`SettingsViewModelTests`、`PermissionMemoryStoreTests`、`WebView2ErrorMapperTests`、`SecurityStateDevToolsParserTests` | 标签命令、配置、设置页、权限、安全状态 |
 
 ## 运行

@@ -23,7 +23,7 @@ This is a **WPF desktop browser** targeting `net8.0-windows`. The Cloud Agent VM
 
 ### Platform caveats on Linux
 
-- **359/373 tests pass.** 14 tests in `MainViewModelTests` fail because they instantiate `TabHostService`, which loads `PresentationFramework.dll` (WPF). This is expected on Linux.
+- **382/382 tests pass** on Linux after S2 (`ITabWebViewHost`, `ImmediateUiThreadMarshaller` for headless tests).
 - The WPF application (`dotnet run --project WebView22Browser.App`) **cannot** launch on Linux — WPF requires Windows.
 - `dotnet build` and `dotnet format` work fully on Linux with `EnableWindowsTargeting=true`.
 

@@ -9,6 +9,7 @@ using WebView22Browser.App.Animations;
 using WebView22Browser.App.Controls;
 using WebView22Browser.App.Services;
 using WebView22Browser.App.ViewModels;
+using WebView22Browser.Core;
 
 namespace WebView22Browser.App;
 
@@ -20,6 +21,7 @@ public partial class MainWindow : Window
     private const double DownloadsPanelHeight = 220;
 
     private readonly MainViewModel _viewModel;
+    private readonly BrowserOptions _browserOptions;
     private readonly WebView2EnvironmentService _environmentService;
     private readonly IDialogService _dialogService;
     private readonly ITabHostService _tabHostService;
@@ -36,6 +38,7 @@ public partial class MainWindow : Window
 
     public MainWindow(
         MainViewModel viewModel,
+        BrowserOptions browserOptions,
         WebView2EnvironmentService environmentService,
         IDialogService dialogService,
         ITabHostService tabHostService,
@@ -48,6 +51,7 @@ public partial class MainWindow : Window
         IBrowsingHistoryService browsingHistoryService)
     {
         _viewModel = viewModel;
+        _browserOptions = browserOptions;
         _environmentService = environmentService;
         _dialogService = dialogService;
         _tabHostService = tabHostService;
@@ -243,6 +247,8 @@ public partial class MainWindow : Window
         host.PermissionStore = _permissionStore;
         host.UserScriptService = _userScriptService;
         host.UserScriptBridge = _userScriptBridge;
+        host.BrowserOptions = _browserOptions;
+        host.TabHostCallbacks = _viewModel;
         host.ProfileReady += OnHostProfileReady;
 
         if (host.Tab == null)

@@ -13,6 +13,7 @@ public class MainViewModelTests
     private static MainViewModel CreateSut(BrowserOptions? options = null, ITabSessionStore? sessionStore = null)
     {
         var effectiveOptions = options ?? new BrowserOptions { HomeUrl = "https://www.bing.com", RestoreLastSession = false };
+        var tabHostService = new TabHostService();
         var userScriptStore = new JsonUserScriptStore(Path.Combine(Path.GetTempPath(), $"userscript-vm-{Guid.NewGuid()}.json"));
         var gmStore = new JsonGmStorageStore(
             Path.Combine(Path.GetTempPath(), $"gm-vm-{Guid.NewGuid():N}"),
@@ -23,7 +24,7 @@ public class MainViewModelTests
             new UserScriptBootstrapBuilder(),
             TestServiceFactory.CreateUserScriptBridge(gmStore),
             gmStore,
-            new TabHostService(),
+            tabHostService,
             dependencyResolver);
         var extensionService = new BrowserExtensionService(
             new JsonExtensionSourceStore(Path.Combine(Path.GetTempPath(), $"ext-vm-{Guid.NewGuid()}.json")),
@@ -56,8 +57,9 @@ public class MainViewModelTests
             userScripts,
             new UserScriptCommandsViewModel(
                 TestServiceFactory.CreateMenuCommandRegistry(),
-                new TabHostService(),
-                userScriptStore),
+                tabHostService,
+                userScriptStore,
+                new ImmediateUiThreadMarshaller()),
             userScriptService,
             new DownloadsViewModel(new FakeDownloadHistoryStore(), effectiveOptions),
             new HistoryViewModel(new FakeBrowsingHistoryStore(), new BrowsingHistoryService(new FakeBrowsingHistoryStore(), effectiveOptions)),

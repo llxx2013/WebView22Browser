@@ -90,7 +90,10 @@ WebView22Browser.sln
 | `IBrowsingHistoryService` | `BrowsingHistoryService` |
 | `HistoryViewModel` / `SettingsViewModel` | 历史/设置页 |
 | `IDownloadService` | `WebView2DownloadService` |
-| `ITabHostService` | `TabHostService` |
+| `ITabHostService` / `ITabWebViewHost` | `TabHostService` / `TabWebViewHost` |
+| `ITabHostCallbacks` | `MainViewModel`（经 `RegisterHost` 注入 Host） |
+| `IUiThreadMarshaller` | `WpfUiThreadMarshaller`（测试用 `ImmediateUiThreadMarshaller`） |
+| `TabSleepCycleProcessor` | 休眠定时 tick（可单测） |
 | `ISystemPressureMonitor` | `SystemPressureMonitor` |
 | `ITabSessionStore` | `JsonTabSessionStore` |
 | `TabSleepService` | 休眠调度 |

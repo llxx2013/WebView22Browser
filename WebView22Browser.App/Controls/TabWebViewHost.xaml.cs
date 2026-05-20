@@ -5,7 +5,6 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
 
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Web.WebView2.Core;
 
 using WebView22Browser.App.Services;
@@ -17,7 +16,7 @@ using WebView22Browser.Core.Services;
 
 namespace WebView22Browser.App.Controls;
 
-public partial class TabWebViewHost : UserControl
+public partial class TabWebViewHost : UserControl, ITabWebViewHost
 {
     public static readonly DependencyProperty TabProperty =
         DependencyProperty.Register(nameof(Tab), typeof(BrowserTabViewModel), typeof(TabWebViewHost),
@@ -76,6 +75,10 @@ public partial class TabWebViewHost : UserControl
     public UserScriptService? UserScriptService { get; set; }
 
     public UserScriptBridge? UserScriptBridge { get; set; }
+
+    public BrowserOptions? BrowserOptions { get; set; }
+
+    public ITabHostCallbacks? TabHostCallbacks { get; set; }
 
     public CoreWebView2? CoreWebView2 => webView.CoreWebView2;
 
@@ -328,8 +331,7 @@ public partial class TabWebViewHost : UserControl
             Tab.IsSleeping = false;
             _processRecoveryAttempts = 0;
 
-            if (Application.Current.MainWindow?.DataContext is MainViewModel main)
-                main.NotifyTabReadyChanged();
+            TabHostCallbacks?.NotifyTabReadyChanged();
 
             if (Tab.FrozenHistoryEntries is { Count: > 0 })
                 await RestoreFrozenHistoryAsync();
@@ -475,10 +477,7 @@ public partial class TabWebViewHost : UserControl
 
     private TabNavigationHistory CreateNavigationHistory()
     {
-        var maxEntries = 50;
-        if (App.Services.GetService<BrowserOptions>() is { } options)
-            maxEntries = options.TabHistoryMaxEntries;
-
+        var maxEntries = BrowserOptions?.TabHistoryMaxEntries ?? 50;
         return new TabNavigationHistory(maxEntries);
     }
 
@@ -719,8 +718,8 @@ public partial class TabWebViewHost : UserControl
                 await UserScriptService.ReinjectPageEnvironmentAsync(core);
             }
 
-            if (Application.Current.MainWindow?.DataContext is MainViewModel main && Tab != null)
-                main.ScriptCommands.Refresh(Tab);
+            if (Tab != null)
+                TabHostCallbacks?.RefreshScriptCommands(Tab);
         }
         catch (Exception ex)
         {
@@ -824,8 +823,8 @@ public partial class TabWebViewHost : UserControl
             ? "新标签页"
             : webView.CoreWebView2.DocumentTitle;
 
-        if (Tab.IsSelected && Application.Current.MainWindow?.DataContext is MainViewModel main)
-            main.UpdateWindowTitle();
+        if (Tab.IsSelected)
+            TabHostCallbacks?.UpdateWindowTitle();
     }
 
     private void OnContentLoading(object? sender, CoreWebView2ContentLoadingEventArgs e)
@@ -842,13 +841,13 @@ public partial class TabWebViewHost : UserControl
             return;
 
         e.Handled = true;
-        if (Application.Current.MainWindow?.DataContext is not MainViewModel main)
+        if (TabHostCallbacks == null || Tab == null)
             return;
 
         var openInNewTab = e.IsUserInitiated
             || NewTabGestureDetector.IsControlClick()
             || ConsumeMiddleClickNewTab();
-        main.HandleNavigation(e.Uri, Tab, openInNewTab);
+        TabHostCallbacks.HandleNavigation(e.Uri, Tab, openInNewTab);
     }
 
     private void OnPreviewMouseDown(object sender, MouseButtonEventArgs e)
@@ -917,10 +916,7 @@ public partial class TabWebViewHost : UserControl
             CoreWebView2ContextMenuItemKind.Command);
 
         openInNewTabItem.CustomItemSelected += (_, _) =>
-        {
-            if (Application.Current.MainWindow?.DataContext is MainViewModel main)
-                main.HandleNavigation(linkUri, sourceTab, openInNewTab: true);
-        };
+            TabHostCallbacks?.HandleNavigation(linkUri, sourceTab, openInNewTab: true);
 
         e.MenuItems.Insert(0, openInNewTabItem);
     }

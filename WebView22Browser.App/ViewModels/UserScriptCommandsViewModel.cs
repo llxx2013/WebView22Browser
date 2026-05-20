@@ -1,6 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Windows;
-using System.Windows.Threading;
 
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -17,16 +15,19 @@ public partial class UserScriptCommandsViewModel : ObservableObject
     private readonly GmMenuCommandRegistry _registry;
     private readonly ITabHostService _tabHostService;
     private readonly IUserScriptStore _scriptStore;
+    private readonly IUiThreadMarshaller _uiThread;
     private BrowserTabViewModel? _currentTab;
 
     public UserScriptCommandsViewModel(
         GmMenuCommandRegistry registry,
         ITabHostService tabHostService,
-        IUserScriptStore scriptStore)
+        IUserScriptStore scriptStore,
+        IUiThreadMarshaller uiThread)
     {
         _registry = registry;
         _tabHostService = tabHostService;
         _scriptStore = scriptStore;
+        _uiThread = uiThread;
         Items = new ObservableCollection<UserScriptMenuCommandItemViewModel>();
         _registry.CommandsChanged += OnCommandsChanged;
     }
@@ -43,14 +44,10 @@ public partial class UserScriptCommandsViewModel : ObservableObject
 
     public void Refresh(BrowserTabViewModel? tab)
     {
-        var dispatcher = Application.Current?.Dispatcher;
-        if (dispatcher == null || dispatcher.CheckAccess())
-        {
+        if (_uiThread.IsOnUiThread)
             RefreshCore(tab);
-            return;
-        }
-
-        dispatcher.Invoke(() => RefreshCore(tab), DispatcherPriority.Normal);
+        else
+            _uiThread.Invoke(() => RefreshCore(tab));
     }
 
     private void RefreshCore(BrowserTabViewModel? tab)

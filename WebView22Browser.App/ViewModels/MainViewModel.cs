@@ -12,7 +12,7 @@ using WebView22Browser.Core.Stores;
 
 namespace WebView22Browser.App.ViewModels;
 
-public partial class MainViewModel : ObservableObject
+public partial class MainViewModel : ObservableObject, ITabHostCallbacks
 {
     private const string WindowTitleSuffix = " - WebView2 Browser";
 
@@ -390,4 +390,6 @@ public partial class MainViewModel : ObservableObject
         OpenFavoriteCommand.NotifyCanExecuteChanged();
         CloseTabCommand.NotifyCanExecuteChanged();
     }
+
+    void ITabHostCallbacks.RefreshScriptCommands(BrowserTabViewModel tab) => ScriptCommands.Refresh(tab);
 }
