@@ -32,7 +32,18 @@ public class MainViewModelTests
         var importService = new UserScriptImportService(new FakeDialogService(), conflictService, dependencyResolver);
         sessionStore ??= new JsonTabSessionStore(Path.Combine(Path.GetTempPath(), $"tabs-vm-{Guid.NewGuid():N}.json"));
 
-        return new MainViewModel(
+        MainViewModel? mainVm = null;
+        var userScripts = new UserScriptsViewModel(
+            userScriptStore,
+            userScriptService,
+            importService,
+            conflictService,
+            dependencyResolver,
+            effectiveOptions,
+            new FakeDialogService(),
+            new Lazy<MainViewModel>(() => mainVm!));
+
+        mainVm = new MainViewModel(
             effectiveOptions,
             new NavigationService(new BrowserOptions
             {
@@ -42,7 +53,7 @@ public class MainViewModelTests
             sessionStore,
             new FavoritesViewModel(new FakeFavoritesStore()),
             new ExtensionsViewModel(extensionService, new FakeDialogService()),
-            new UserScriptsViewModel(userScriptStore, userScriptService, importService, conflictService, effectiveOptions, new FakeDialogService()),
+            userScripts,
             new UserScriptCommandsViewModel(
                 TestServiceFactory.CreateMenuCommandRegistry(),
                 new TabHostService(),
@@ -51,6 +62,8 @@ public class MainViewModelTests
             new DownloadsViewModel(new FakeDownloadHistoryStore(), effectiveOptions),
             new HistoryViewModel(new FakeBrowsingHistoryStore(), new BrowsingHistoryService(new FakeBrowsingHistoryStore(), effectiveOptions)),
             CreateSettingsViewModel(effectiveOptions));
+
+        return mainVm;
     }
 
     private static SettingsViewModel CreateSettingsViewModel(BrowserOptions options)

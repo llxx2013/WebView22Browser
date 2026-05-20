@@ -86,7 +86,8 @@ public sealed class UserScriptService
         _registrationIds[core] = scriptId;
     }
 
-    public async Task RefreshAllHostsAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyDictionary<Guid, ResolvedScriptDependencies>> RefreshAllHostsAsync(
+        CancellationToken cancellationToken = default)
     {
         ScriptsChanged?.Invoke();
 
@@ -98,10 +99,10 @@ public sealed class UserScriptService
             .Select(host => ApplyToWebViewAsync(host.CoreWebView2!, cancellationToken, resolvedDependencies))
             .ToList();
 
-        if (applyTasks.Count == 0)
-            return;
+        if (applyTasks.Count > 0)
+            await Task.WhenAll(applyTasks);
 
-        await Task.WhenAll(applyTasks);
+        return resolvedDependencies;
     }
 
     public Task DeleteScriptStorageAsync(Guid scriptId, CancellationToken cancellationToken = default) =>

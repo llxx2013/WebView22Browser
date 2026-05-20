@@ -30,6 +30,11 @@
 
 相关逻辑通过 Core 策略类与 ViewModel 命令间接验证。
 
+### translate 回归
+
+- **自动化**：`TranslateScriptCompatibilityTests`（`Fixtures/TranslateCompatFixture.cs`，内联 GM / XHR / 菜单模式，不依赖外网）。
+- **手动**：见 [user-scripts.md § translate 手动验收清单](../features/user-scripts.md#translate-手动验收清单)。
+
 ## 覆盖范围（按主题）
 
 | 主题 | 测试类 | 覆盖范围 |
@@ -37,7 +42,7 @@
 | 导航 | `NavigationServiceTests`、`NavigationErrorPolicyTests`、`NavigationErrorFormatterTests` | URI 解析、搜索回退、`localhost` / `file`、错误文案 |
 | 收藏 | `JsonFavoritesStoreTests`、`FavoritesViewModelTests` | 持久化与 ViewModel |
 | 扩展 | `JsonExtensionSourceStoreTests`、`ExtensionPathValidatorTests`、`ExtensionManifestReaderTests` | 注册表、路径、`manifest.json` |
-| 用户脚本 | `JsonUserScriptStoreTests`、`UserScriptMetadataParserTests`、`UserScriptUrlMatcherTests`、`UserScriptUrlMatcherParityTests`、`UserScriptBootstrapBuilderTests`、`UserScriptMessageValidatorTests`、`UserScriptConnectMatcherTests`、`UserScriptConflictDetectorTests` | 元数据、URL 匹配（含 JS 同构）、注入、鉴权、`@connect`、冲突 |
+| 用户脚本 | `JsonUserScriptStoreTests`、`UserScriptMetadataParserTests`、`UserScriptUrlMatcherTests`、`UserScriptUrlMatcherParityTests`、`UserScriptBootstrapBuilderTests`、`UserScriptDependencyCacheTests`、`UserScriptDependencyResolverTests`、`UserScriptDependencyStatusTests`、`TranslateScriptCompatibilityTests`、`UserScriptMessageValidatorTests`、`UserScriptConnectMatcherTests`、`UserScriptConflictDetectorTests` | 元数据、URL 匹配（含 JS 同构）、注入、依赖缓存、`translate` 裁剪 fixture、鉴权、`@connect`、冲突 |
 | GM | `JsonGmStorageStoreTests`、`GmStorageMessageHandlerTests`、`GmXhrServiceTests`、`GmXhrMessageHandlerTests`、`GmMenuCommandRegistryTests` | 存储配额、XHR |
 | 历史 | `JsonBrowsingHistoryStoreTests`、`BrowsingHistoryPolicyTests`、`BrowsingHistoryGrouperTests`、`BrowsingHistorySearchTests`、`BrowsingHistoryTitleFormatterTests`、`HistoryViewModelTests` | 写入、分组、搜索 |
 | 下载 | `JsonDownloadHistoryStoreTests`、`DownloadItemViewModelTests`、`DownloadProgressFormatterTests` | 历史与进度文案 |

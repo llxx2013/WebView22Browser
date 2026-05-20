@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 
 using WebView22Browser.Core.Models;
+using WebView22Browser.Core.Services;
 
 namespace WebView22Browser.App.ViewModels;
 
@@ -35,5 +36,15 @@ public sealed partial class UserScriptItemViewModel : ObservableObject
 
     public bool IsEnabled => Entry.Enabled;
 
-    public void Refresh() => OnPropertyChanged(string.Empty);
+    [ObservableProperty]
+    private string _dependencySummary = string.Empty;
+
+    public void UpdateDependencyStatus(ResolvedScriptDependencies? resolved) =>
+        DependencySummary = UserScriptDependencyStatus.FormatSummary(Entry, resolved, Entry.Enabled);
+
+    public void Refresh()
+    {
+        OnPropertyChanged(string.Empty);
+        UpdateDependencyStatus(null);
+    }
 }

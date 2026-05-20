@@ -94,6 +94,24 @@ URL 匹配语义与 [UserScriptUrlMatcher](../WebView22Browser.Core/Services/Use
 
 [UserScriptConflictDetector](../WebView22Browser.Core/Services/UserScriptConflictDetector.cs) / [UserScriptExtensionConflictService](../WebView22Browser.App/Services/UserScriptExtensionConflictService.cs)：保存或导入时比对已启用 Chromium 扩展的 content script `matches`。
 
+## 侧栏状态与刷新
+
+- 每条脚本可显示 `Requires N · Resources M · 缓存就绪` 或 `依赖待刷新`（无 `@require`/`@resource` 时不显示）。
+- 保存、导入、启用/禁用或「重载」后会预取依赖并更新状态；若部分 URL 失败，状态栏会提示「已保存但依赖未齐」。
+- **「刷新全部标签」** 会对所有已打开标签调用 `RequestReload()`，便于在修改脚本后一次性生效（bootstrap 注入仍依赖 `RefreshAllHostsAsync`，通常已在保存时完成）。
+
+## translate 手动验收清单
+
+基于仓库内 [test-scripts/translate/translate.user.js](../../test-scripts/translate/translate.user.js)（需联网预取 CDN 依赖）：
+
+1. **导入**：侧栏「导入 .user.js…」选择 translate；确认对话框无阻断性错误后完成导入；侧栏显示 `Requires 3 · Resources 1 · 缓存就绪`（或重试「重载」直至就绪）。
+2. **刷新页面**：打开 `https://www.bing.com` 或 `https://www.google.com` 顶层页，点击「刷新全部标签」或手动 F5。
+3. **脚本命令**：工具栏「脚本命令」应出现 4 条设置项（非灰色）；DevTools 控制台无 `Swal` / `GM_*` ReferenceError。
+4. **快捷键翻译**：选中英文单词，按 F9（或先在脚本命令中修改快捷键），应弹出 SweetAlert2 翻译窗并显示译文。
+5. **API 解析**：网络面板或脚本逻辑中翻译请求返回 `{ code: 200, data: ... }` 时能正常显示（依赖 `GM_xmlhttpRequest` 的 `responseType: 'json'`）。
+
+离线自动化见 `TranslateScriptCompatibilityTests`（裁剪 fixture，不访问外网）。
+
 ## 测试
 
-`JsonUserScriptStoreTests`、`UserScriptMetadataParserTests`、`UserScriptUrlMatcherTests`、`UserScriptBootstrapBuilderTests`、`UserScriptDependencyCacheTests`、`UserScriptDependencyResolverTests`、`UserScriptMessageValidatorTests`、`UserScriptConnectMatcherTests`、`UserScriptConflictDetectorTests`、`JsonGmStorageStoreTests`、`GmStorageMessageHandlerTests`、`GmXhrServiceTests`、`GmXhrMessageHandlerTests`、`GmMenuCommandRegistryTests`。
+`JsonUserScriptStoreTests`、`UserScriptMetadataParserTests`、`UserScriptUrlMatcherTests`、`UserScriptBootstrapBuilderTests`、`UserScriptDependencyCacheTests`、`UserScriptDependencyResolverTests`、`UserScriptDependencyStatusTests`、`TranslateScriptCompatibilityTests`、`UserScriptMessageValidatorTests`、`UserScriptConnectMatcherTests`、`UserScriptConflictDetectorTests`、`JsonGmStorageStoreTests`、`GmStorageMessageHandlerTests`、`GmXhrServiceTests`、`GmXhrMessageHandlerTests`、`GmMenuCommandRegistryTests`。

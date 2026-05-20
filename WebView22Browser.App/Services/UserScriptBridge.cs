@@ -178,6 +178,9 @@ public sealed class UserScriptBridge
         _menuCommandRegistry.Register(
             core,
             new GmMenuCommandDescriptor(commandId, validation.ScriptId.Value, caption, accessKey));
+
+        Debug.WriteLine(
+            $"[userscript] registered menu command scriptId={validation.ScriptId.Value} commandId={commandId} caption={caption}");
     }
 
     private void HandleUnregisterMenuCommand(CoreWebView2 core, UserScriptMessageValidationResult validation)
