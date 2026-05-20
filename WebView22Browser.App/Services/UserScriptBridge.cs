@@ -31,6 +31,7 @@ public sealed class UserScriptBridge
     };
 
     private readonly IDialogService _dialogService;
+    private readonly IBrowserStatusReporter _statusReporter;
     private readonly GmStorageMessageHandler _gmStorageHandler;
     private readonly GmXhrMessageHandler _gmXhrHandler;
     private readonly IGmTabService _gmTabService;
@@ -42,6 +43,7 @@ public sealed class UserScriptBridge
 
     public UserScriptBridge(
         IDialogService dialogService,
+        IBrowserStatusReporter statusReporter,
         IGmStorageStore gmStorageStore,
         GmXhrMessageHandler gmXhrHandler,
         IGmTabService gmTabService,
@@ -49,6 +51,7 @@ public sealed class UserScriptBridge
         GmMenuCommandRegistry menuCommandRegistry)
     {
         _dialogService = dialogService;
+        _statusReporter = statusReporter;
         _gmStorageHandler = new GmStorageMessageHandler(gmStorageStore);
         _gmXhrHandler = gmXhrHandler;
         _gmTabService = gmTabService;
@@ -124,36 +127,43 @@ public sealed class UserScriptBridge
             return;
         }
 
-        switch (validation.Type)
+        try
         {
-            case "notify":
-            case "gm.notification":
-                HandleNotify(validation.Payload);
-                break;
-            case "log":
-            case "gm.log":
-                HandleLog(validation.Payload);
-                break;
-            case "gm.setValue":
-            case "gm.deleteValue":
-                _ = PersistGmStorageAsync(validation);
-                break;
-            case "gm.xhrRequest":
-            case "gm.xhrAbort":
-                _ = HandleGmXhrAsync(validation, core);
-                break;
-            case "gm.openInTab":
-                HandleOpenInTab(validation.Payload);
-                break;
-            case "gm.setClipboard":
-                HandleSetClipboard(validation.Payload);
-                break;
-            case "gm.registerMenuCommand":
-                HandleRegisterMenuCommand(core, validation);
-                break;
-            case "gm.unregisterMenuCommand":
-                HandleUnregisterMenuCommand(core, validation);
-                break;
+            switch (validation.Type)
+            {
+                case "notify":
+                case "gm.notification":
+                    HandleNotify(validation.Payload);
+                    break;
+                case "log":
+                case "gm.log":
+                    HandleLog(validation.Payload);
+                    break;
+                case "gm.setValue":
+                case "gm.deleteValue":
+                    _ = PersistGmStorageAsync(validation, core);
+                    break;
+                case "gm.xhrRequest":
+                case "gm.xhrAbort":
+                    _ = HandleGmXhrAsync(validation, core);
+                    break;
+                case "gm.openInTab":
+                    HandleOpenInTab(validation.Payload);
+                    break;
+                case "gm.setClipboard":
+                    HandleSetClipboard(validation.Payload);
+                    break;
+                case "gm.registerMenuCommand":
+                    HandleRegisterMenuCommand(core, validation);
+                    break;
+                case "gm.unregisterMenuCommand":
+                    HandleUnregisterMenuCommand(core, validation);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            ReportHostFailure(core, $"用户脚本消息处理失败：{ex.Message}");
         }
     }
 
@@ -236,11 +246,13 @@ public sealed class UserScriptBridge
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[userscript] GM XHR failed: {ex}");
+            ReportHostFailure(core, $"GM 请求失败：{ex.Message}");
         }
     }
 
-    private async Task PersistGmStorageAsync(UserScriptMessageValidationResult validation)
+    private async Task PersistGmStorageAsync(
+        UserScriptMessageValidationResult validation,
+        CoreWebView2 core)
     {
         try
         {
@@ -248,11 +260,11 @@ public sealed class UserScriptBridge
         }
         catch (GmStorageQuotaExceededException ex)
         {
-            Debug.WriteLine($"[userscript] GM storage quota exceeded: {ex.Message}");
+            ReportHostFailure(core, $"GM 存储配额已满：{ex.Message}");
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[userscript] GM storage persist failed: {ex}");
+            ReportHostFailure(core, $"GM 存储保存失败：{ex.Message}");
         }
     }
 
@@ -335,5 +347,25 @@ public sealed class UserScriptBridge
         }
 
         dispatcher.Invoke(action, DispatcherPriority.Normal);
+    }
+
+    private void ReportHostFailure(CoreWebView2 core, string message)
+    {
+        Debug.WriteLine($"[userscript] {message}");
+        _statusReporter.Report(message);
+        _ = PostConsoleErrorAsync(core, message);
+    }
+
+    private static async Task PostConsoleErrorAsync(CoreWebView2 core, string message)
+    {
+        try
+        {
+            var literal = JsonSerializer.Serialize($"[WebView22Browser] {message}");
+            await core.ExecuteScriptAsync($"console.error({literal});");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[userscript] console.error post failed: {ex}");
+        }
     }
 }

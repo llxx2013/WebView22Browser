@@ -267,10 +267,10 @@ flowchart LR
 
 ### S1
 
-- [ ] `JsonFileStoreBase`（或等效）+ 迁移各 Store
-- [ ] `PermissionMemoryStore` 错误可观测
-- [ ] `TabSleepService` flush 失败提示
-- [ ] `UserScriptBridge` 宿主失败提示
+- [x] `JsonFileStoreBase`（或等效）+ 迁移各 Store
+- [x] `PermissionMemoryStore` 错误可观测
+- [x] `TabSleepService` flush 失败提示
+- [x] `UserScriptBridge` 宿主失败提示
 
 ### S2
 
@@ -301,3 +301,4 @@ flowchart LR
 | --- | --- |
 | 2026-05-20 | 初版：基于 `main` 代码与文档梳理 |
 | 2026-05-20 | S0 完成：限制清单、验收记录、勾选表更新 |
+| 2026-05-20 | S1 完成：`JsonFileStoreBase`、原子 JSON 写、权限/会话/GM 失败状态栏提示 |

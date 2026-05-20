@@ -114,14 +114,6 @@ public sealed class JsonTabSessionStore : ITabSessionStore
             path = _filePath;
         }
 
-        var directory = Path.GetDirectoryName(path);
-        if (!string.IsNullOrEmpty(directory))
-            Directory.CreateDirectory(directory);
-
-        var tempPath = path + ".tmp";
-        await using (var stream = File.Create(tempPath))
-            await JsonSerializer.SerializeAsync(stream, snapshot, JsonOptions, cancellationToken);
-
-        File.Move(tempPath, path, overwrite: true);
+        await JsonFileStoreBase.WriteAtomicAsync(path, snapshot, JsonOptions, cancellationToken: cancellationToken);
     }
 }

@@ -4,7 +4,7 @@ using WebView22Browser.Core.Models;
 
 namespace WebView22Browser.Core.Stores;
 
-public sealed class JsonBrowsingHistoryStore : IBrowsingHistoryStore
+public sealed class JsonBrowsingHistoryStore : JsonFileStoreBase, IBrowsingHistoryStore
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -12,7 +12,6 @@ public sealed class JsonBrowsingHistoryStore : IBrowsingHistoryStore
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    private readonly string _filePath;
     private readonly List<BrowsingHistoryEntry> _items = [];
     private readonly SemaphoreSlim _lock = new(1, 1);
 
@@ -22,8 +21,8 @@ public sealed class JsonBrowsingHistoryStore : IBrowsingHistoryStore
     }
 
     public JsonBrowsingHistoryStore(string filePath)
+        : base(filePath, serializeWrites: true)
     {
-        _filePath = filePath;
     }
 
     public IReadOnlyList<BrowsingHistoryEntry> Items
@@ -49,12 +48,12 @@ public sealed class JsonBrowsingHistoryStore : IBrowsingHistoryStore
         {
             _items.Clear();
 
-            if (!File.Exists(_filePath))
+            if (!File.Exists(FilePath))
                 return;
 
             try
             {
-                await using var stream = File.OpenRead(_filePath);
+                await using var stream = File.OpenRead(FilePath);
                 var loaded = await JsonSerializer.DeserializeAsync<List<BrowsingHistoryEntry>>(
                     stream, JsonOptions, cancellationToken);
                 if (loaded != null)
@@ -84,12 +83,7 @@ public sealed class JsonBrowsingHistoryStore : IBrowsingHistoryStore
             _lock.Release();
         }
 
-        var directory = Path.GetDirectoryName(_filePath);
-        if (!string.IsNullOrEmpty(directory))
-            Directory.CreateDirectory(directory);
-
-        await using var stream = File.Create(_filePath);
-        await JsonSerializer.SerializeAsync(stream, snapshot, JsonOptions, cancellationToken);
+        await WriteAtomicAsync(snapshot, JsonOptions, cancellationToken);
     }
 
     public void Add(BrowsingHistoryEntry entry)
