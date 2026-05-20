@@ -239,7 +239,27 @@ public sealed class UserScriptBootstrapBuilder
                       handler: function (payload) {
                         try {
                           if (payload.kind === 'load') {
-                            if (details.onload) details.onload(payload.response);
+                            if (details.onload) {
+                              var res = payload.response;
+                              if (details.responseType === 'json' && res) {
+                                try {
+                                  var raw = res.response != null ? res.response : res.responseText;
+                                  if (typeof raw === 'string') {
+                                    var parsed = JSON.parse(raw);
+                                    res = Object.assign({}, res, { response: parsed, responseText: raw });
+                                  }
+                                } catch (parseErr) {
+                                  if (details.onerror) {
+                                    details.onerror({
+                                      error: parseErr && parseErr.message ? parseErr.message : String(parseErr),
+                                      details: payload
+                                    });
+                                  }
+                                  return;
+                                }
+                              }
+                              details.onload(res);
+                            }
                           } else if (payload.kind === 'error') {
                             if (details.onerror) details.onerror({ error: payload.error, details: payload });
                           } else if (payload.kind === 'timeout') {
@@ -264,6 +284,11 @@ public sealed class UserScriptBootstrapBuilder
                     return {
                       abort: function () { postGm('gm.xhrAbort', { requestId: rid }); }
                     };
+                  };
+                }
+                if (grantSet['GM_getResourceText']) {
+                  api.GM_getResourceText = function (name) {
+                    return null;
                   };
                 }
                 if (grantSet['GM_registerMenuCommand']) {
@@ -389,9 +414,18 @@ public sealed class UserScriptBootstrapBuilder
                 // parameters and globals are reachable from the code body.
                 var exec = function () {
                   try {
+                    var prelude = '';
+                    if (gm) {
+                      for (var pi = 0; pi < rule.grants.length; pi++) {
+                        var grantName = rule.grants[pi];
+                        if (grantName.indexOf('GM_') === 0 && Object.prototype.hasOwnProperty.call(gm, grantName)) {
+                          prelude += 'var ' + grantName + ' = GM.' + grantName + '; ';
+                        }
+                      }
+                    }
                     var userFn;
                     try {
-                      userFn = new Function('GM', 'unsafeWindow', rule.code);
+                      userFn = new Function('GM', 'unsafeWindow', prelude + rule.code);
                     } catch (compileErr) {
                       console.error('[userscript]', rule.id, compileErr);
                       return;

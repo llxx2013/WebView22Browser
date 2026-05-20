@@ -155,4 +155,20 @@ public class UserScriptMetadataParserTests
         Assert.Contains("GM_customFutureApi", result.Grants);
         Assert.Contains(result.Warnings, w => w.Contains("GM_customFutureApi"));
     }
+
+    [Fact]
+    public void Parse_KnownGrant_GM_getResourceText_DoesNotWarn()
+    {
+        const string source = """
+            // ==UserScript==
+            // @name Test
+            // @match *://*/*
+            // @grant GM_getResourceText
+            // ==/UserScript==
+            """;
+        var result = UserScriptMetadataParser.Parse(source);
+
+        Assert.Contains("GM_getResourceText", result.Grants);
+        Assert.DoesNotContain(result.Warnings, w => w.Contains("GM_getResourceText"));
+    }
 }

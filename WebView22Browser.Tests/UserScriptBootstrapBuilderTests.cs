@@ -167,7 +167,7 @@ public class UserScriptBootstrapBuilderTests
         var artifact = CreateBuilder().Build(scripts);
 
         Assert.NotNull(artifact);
-        Assert.Contains("new Function('GM', 'unsafeWindow', rule.code)", artifact.JavaScript);
+        Assert.Contains("new Function('GM', 'unsafeWindow', prelude + rule.code)", artifact.JavaScript);
         Assert.DoesNotContain("eval(code)", artifact.JavaScript);
     }
 
@@ -326,6 +326,125 @@ public class UserScriptBootstrapBuilderTests
 
         Assert.NotNull(artifact);
         Assert.Contains("api.GM_getValue", artifact.JavaScript);
+    }
+
+    [Fact]
+    public void Build_GmGetValueGrant_GeneratesPreludeBinding()
+    {
+        var scripts = new[]
+        {
+            new UserScriptEntry
+            {
+                Enabled = true,
+                MatchPatterns = ["*://*/*"],
+                Grants = ["GM_getValue", "GM_setValue"],
+                Code = "void 0;"
+            }
+        };
+
+        var artifact = CreateBuilder().Build(scripts);
+
+        Assert.NotNull(artifact);
+        Assert.Contains("grantName.indexOf('GM_') === 0", artifact.JavaScript);
+        Assert.Contains("'var ' + grantName + ' = GM.' + grantName + '; '", artifact.JavaScript);
+        Assert.Contains("prelude + rule.code", artifact.JavaScript);
+    }
+
+    [Theory]
+    [InlineData(new[] { "GM_getValue" }, new[] { "GM_getValue" }, "var GM_getValue = GM.GM_getValue; ")]
+    [InlineData(new[] { "GM_getValue", "GM_xmlhttpRequest" }, new[] { "GM_getValue" }, "var GM_getValue = GM.GM_getValue; ")]
+    [InlineData(new[] { "unsafeWindow", "GM_log" }, new[] { "GM_log" }, "var GM_log = GM.GM_log; ")]
+    public void PreludeParity_MatchesBootstrapSemantics(
+        string[] grants,
+        string[] apiKeys,
+        string expectedPrelude)
+    {
+        var prelude = UserScriptBootstrapGmPreludeParity.BuildPrelude(
+            grants,
+            apiKeys.ToHashSet(StringComparer.Ordinal));
+
+        Assert.Equal(expectedPrelude, prelude);
+    }
+
+    [Fact]
+    public void PreludeParity_UserCodeCanReferenceGmGetValueAlias()
+    {
+        var prelude = UserScriptBootstrapGmPreludeParity.BuildPrelude(
+            ["GM_getValue"],
+            new HashSet<string>(StringComparer.Ordinal) { "GM_getValue" });
+
+        Assert.Equal("var GM_getValue = GM.GM_getValue; ", prelude);
+
+        var gmGetValue = new Func<string, object?, object?>((key, def) =>
+            key == "key" ? 42 : def ?? 0);
+
+        object? CallViaAlias(string key, object? def) => gmGetValue(key, def);
+
+        Assert.Equal(42, CallViaAlias("key", 0));
+    }
+
+    [Fact]
+    public void Build_GmXhrJsonResponseType_ParsesJsonOnLoad()
+    {
+        var scripts = new[]
+        {
+            new UserScriptEntry
+            {
+                Enabled = true,
+                MatchPatterns = ["*://*/*"],
+                Grants = ["GM_xmlhttpRequest"],
+                Code = "void 0;"
+            }
+        };
+
+        var artifact = CreateBuilder().Build(scripts);
+
+        Assert.NotNull(artifact);
+        Assert.Contains("details.responseType === 'json'", artifact.JavaScript);
+        Assert.Contains("JSON.parse(raw)", artifact.JavaScript);
+    }
+
+    [Fact]
+    public void XhrJsonParity_ParsesResponseBody()
+    {
+        var (success, response, error) = UserScriptBootstrapXhrJsonParity.ApplyJsonResponseType(
+            "json",
+            new UserScriptBootstrapXhrJsonParity.XhrResponse(
+                200,
+                """{"code":200,"data":"ok"}""",
+                """{"code":200,"data":"ok"}"""));
+
+        Assert.True(success);
+        Assert.Null(error);
+        Assert.NotNull(response);
+        var parsed = Assert.IsType<JsonElement>(response!.Response);
+        Assert.Equal(200, parsed.GetProperty("code").GetInt32());
+        Assert.Equal("ok", parsed.GetProperty("data").GetString());
+    }
+
+    [Fact]
+    public void Build_GmGetResourceTextGrant_GeneratesPlaceholder()
+    {
+        var scripts = new[]
+        {
+            new UserScriptEntry
+            {
+                Enabled = true,
+                MatchPatterns = ["*://*/*"],
+                Grants = ["GM_getResourceText"],
+                Code = "void 0;"
+            }
+        };
+
+        var artifact = CreateBuilder().Build(scripts);
+
+        Assert.NotNull(artifact);
+        Assert.Contains("api.GM_getResourceText", artifact.JavaScript);
+        Assert.Equal(
+            "var GM_getResourceText = GM.GM_getResourceText; ",
+            UserScriptBootstrapGmPreludeParity.BuildPrelude(
+                ["GM_getResourceText"],
+                new HashSet<string>(StringComparer.Ordinal) { "GM_getResourceText" }));
     }
 
     [Fact]
