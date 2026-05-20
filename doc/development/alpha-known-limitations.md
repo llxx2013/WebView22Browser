@@ -22,17 +22,17 @@
 | `@require` / `@resource` | 仅 `http`/`https`；单文件 ≤ 5 MB；预取不走 `@connect` |
 | GM 存储 | 跨标签不实时同步；宿主异常退出可能导致未持久化 |
 | `GM_xmlhttpRequest` | 注入页面 Cookie；`Set-Cookie` 不写回；无流式 / `onprogress`；响应体 ≤ 10 MB |
-| `GM_openInTab` | `active: false` 后台打开当前被忽略（S3 计划修复） |
+| `GM_openInTab` | `active: false` 在后台打开标签且不切换当前选中标签 |
 | 高权限风险 | 仅安装可信脚本；可借登录态访问已 `@connect` 的站点 |
 
 ## 标签与会话
 
 | 限制 | 说明 |
 | --- | --- |
-| 活跃标签建议 ≤ 10 | 每标签独立 WebView2；当前无 UI 软提示（S3 计划添加） |
+| 活跃标签建议 ≤ 10 | 每标签独立 WebView2；超过 10 个标签时状态栏软提示 |
 | 会话恢复粒度 | 仅 **URL 级** 线性历史栈；不恢复 SPA 表单、`pushState` 内存状态（见 [tab-sleep-and-session.md](../features/tab-sleep-and-session.md)） |
 | `RestoreLastSession` | 须**完整重启浏览器**后生效 |
-| 部分 JSON 非原子写 | `favorites`、`extensions`、`userscripts` 等崩溃时可能半写损坏（S1 计划统一原子写） |
+| 侧栏 JSON 原子写 | 收藏、扩展、脚本、权限、下载历史等经 `JsonFileStoreBase` 原子写入；崩溃时仍建议备份重要数据 |
 
 ## 安全与证书
 
@@ -52,7 +52,7 @@
 
 | 限制 | 说明 |
 | --- | --- |
-| Linux 本地测试 | 约 14 条 `MainViewModelTests` 因 `TabHostService` 加载 WPF 失败；Windows CI 为权威（见 [AGENTS.md](../../AGENTS.md)） |
+| Linux 本地测试 | S2 后 Linux 与 Windows CI 测试一致（见 [AGENTS.md](../../AGENTS.md)） |
 | 无 WebView2 E2E | `TabWebViewHost` 无自动化集成测试（最大回归盲区） |
 | DevTools | 默认开启，适合 Alpha；正式版可考虑设置项 |
 

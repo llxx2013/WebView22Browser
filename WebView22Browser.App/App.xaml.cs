@@ -23,7 +23,7 @@ public partial class App : Application
             Services = await ConfigureServicesAsync();
             var mainViewModel = Services.GetRequiredService<MainViewModel>();
             Services.GetRequiredService<WpfGmTabService>()
-                .SetOpenHandler(url => mainViewModel.OpenNewTab(url));
+                .SetOpenHandler((url, activate) => mainViewModel.OpenNewTab(url, activate));
 
             var favoritesViewModel = Services.GetRequiredService<FavoritesViewModel>();
             favoritesViewModel.NavigateToFavorite = item => mainViewModel.OpenFavoriteCommand.Execute(item);
@@ -77,6 +77,7 @@ public partial class App : Application
         services.AddSingleton<IUserSettingsStore>(userSettingsStore);
         services.AddSingleton<NavigationService>();
         services.AddSingleton<WebView2EnvironmentService>();
+        services.AddSingleton<IWebView2EnvironmentAccessor>(sp => sp.GetRequiredService<WebView2EnvironmentService>());
         services.AddSingleton<IFavoritesStore, JsonFavoritesStore>();
         services.AddSingleton<IExtensionSourceStore, JsonExtensionSourceStore>();
         services.AddSingleton<IUserScriptStore, JsonUserScriptStore>();
@@ -109,6 +110,7 @@ public partial class App : Application
         services.AddSingleton<UserScriptExtensionConflictService>();
         services.AddSingleton<UserScriptImportService>();
         services.AddSingleton<BrowserExtensionService>();
+        services.AddSingleton<BrowsingDataClearService>();
         services.AddSingleton<PermissionMemoryStore>();
         services.AddSingleton<IDialogService, WpfDialogService>();
         services.AddSingleton<IDesktopService, WpfDesktopService>();

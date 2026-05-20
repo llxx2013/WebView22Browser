@@ -294,13 +294,14 @@ public sealed class UserScriptBridge
         if (string.IsNullOrWhiteSpace(url))
             return;
 
+        var activate = true;
         if (payload.TryGetProperty("active", out var activeProp)
             && activeProp.ValueKind == JsonValueKind.False)
         {
-            return;
+            activate = false;
         }
 
-        RunOnUiThread(() => _gmTabService.OpenInNewTab(url));
+        RunOnUiThread(() => _gmTabService.OpenInNewTab(url, activate));
     }
 
     private void HandleSetClipboard(JsonElement payload)
