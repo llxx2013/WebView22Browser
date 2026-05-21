@@ -25,7 +25,7 @@
 
 ## 未覆盖区域
 
-- `TabWebViewHost` 与 WebView2 运行时集成
+- `TabWebViewHost` 与 WebView2 运行时集成（依赖经 `MainWindow.RegisterHost` → `ConfigureHost` 注入，无 Service Locator；休眠路径由 `FakeTabWebViewHost` / `TabSleepCycleProcessorTests` 覆盖）
 - XAML 布局与视觉回归
 - 端到端浏览器场景
 

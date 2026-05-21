@@ -68,7 +68,7 @@
 
 | 建议 | 现状问题 | 预期收益 |
 | --- | --- | --- |
-| 消除 `TabWebViewHost` 中的 Service Locator | `Application.Current.MainWindow?.DataContext is MainViewModel`、`App.Services.GetService<BrowserOptions>()` | 可测性、依赖清晰 |
+| ~~消除 `TabWebViewHost` 中的 Service Locator~~（**S2 已完成**） | 已改为 `ConfigureHost` + `ITabHostCallbacks`；见 [architecture.md](../architecture.md) | 可测性、依赖清晰 |
 | 为 Host 定义窄接口回调 | 如 `ITabReadyNotifier`、`IBrowserOptionsAccessor`，经 `MainWindow.RegisterHost` 注入 | 与 VM 解耦，便于后续拆分文件 |
 | 统一 JSON 持久化基类 | 仅 [JsonTabSessionStore](../../WebView22Browser.Core/Stores/JsonTabSessionStore.cs)、[JsonUserSettingsStore](../../WebView22Browser.Core/Stores/JsonUserSettingsStore.cs) 原子写；其余 Store 直接 `File.Create` | 降低崩溃时 JSON 损坏风险 |
 | `ITabHostService` 不暴露 WPF 类型 | 接口返回 [TabWebViewHost](../../WebView22Browser.App/Controls/TabWebViewHost.xaml.cs) | Linux 上 `MainViewModelTests` 可用 Fake；App/Core 边界更清晰 |
