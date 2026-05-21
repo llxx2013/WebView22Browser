@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 using WebView22Browser.Core;
+using WebView22Browser.Core.Async;
 using WebView22Browser.Core.Models;
 using WebView22Browser.Core.Stores;
 
@@ -130,7 +131,10 @@ public partial class DownloadsViewModel : ObservableObject
 
     private void OnOpenRequested(string path) => OpenFileHandler?.Invoke(path);
 
-    private async void OnRemoveFromHistoryRequested(DownloadItemViewModel item)
+    private void OnRemoveFromHistoryRequested(DownloadItemViewModel item) =>
+        FireAndForget.Run(() => OnRemoveFromHistoryRequestedAsync(item));
+
+    private async Task OnRemoveFromHistoryRequestedAsync(DownloadItemViewModel item)
     {
         UnwireHistoryItem(item);
         await RemoveFromHistoryAsync(item);

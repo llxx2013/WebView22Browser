@@ -4,6 +4,7 @@ using System.Windows.Threading;
 
 using WebView22Browser.App.ViewModels;
 using WebView22Browser.Core;
+using WebView22Browser.Core.Async;
 using WebView22Browser.Core.Models;
 using WebView22Browser.Core.Services;
 using WebView22Browser.Core.Stores;
@@ -165,30 +166,31 @@ public sealed class TabSleepService : IRuntimeBrowserSettingsApplier, IDisposabl
         }
     }
 
-    private async void OnTimerTick(object? sender, EventArgs e)
+    private void OnTimerTick(object? sender, EventArgs e) =>
+        FireAndForget.Run(() => OnTimerTickAsync(sender, e), ReportTimerTickFailure);
+
+    private async Task OnTimerTickAsync(object? sender, EventArgs e)
     {
-        try
-        {
-            var anyAction = await _cycleProcessor.ProcessAsync(
-                _mainViewModel.Value.Tabs.ToList(),
-                _tabHostService,
-                _options,
-                _pressureMonitor.Current,
-                DateTime.UtcNow);
+        var anyAction = await _cycleProcessor.ProcessAsync(
+            _mainViewModel.Value.Tabs.ToList(),
+            _tabHostService,
+            _options,
+            _pressureMonitor.Current,
+            DateTime.UtcNow);
 
-            if (anyAction)
-            {
-                MarkSessionDirty();
-                PersistSessionSnapshotIfStale();
-            }
-
-            await _sessionStore.FlushIfDebouncedAsync();
-        }
-        catch (Exception ex)
+        if (anyAction)
         {
-            Debug.WriteLine($"TabSleep tick failed: {ex}");
-            _statusReporter.Report("标签休眠检查失败，请查看调试输出。");
+            MarkSessionDirty();
+            PersistSessionSnapshotIfStale();
         }
+
+        await _sessionStore.FlushIfDebouncedAsync();
+    }
+
+    private void ReportTimerTickFailure(Exception ex)
+    {
+        Debug.WriteLine($"TabSleep tick failed: {ex}");
+        _statusReporter.Report("标签休眠检查失败，请查看调试输出。");
     }
 
     private void PersistSessionSnapshotIfStale()
