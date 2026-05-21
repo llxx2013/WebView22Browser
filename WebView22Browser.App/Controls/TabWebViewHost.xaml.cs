@@ -44,6 +44,7 @@ public partial class TabWebViewHost : UserControl, ITabWebViewHost
     private bool _securityDevToolsEnabled;
     private CoreWebView2DevToolsProtocolEventReceiver? _securityEventReceiver;
     private EventHandler<CoreWebView2DevToolsProtocolEventReceivedEventArgs>? _securityStateHandler;
+    private bool _isHostConfigured;
 
     public TabWebViewHost()
     {
@@ -64,21 +65,58 @@ public partial class TabWebViewHost : UserControl, ITabWebViewHost
         set => SetValue(EnvironmentProperty, value);
     }
 
-    public IDialogService? DialogService { get; set; }
+    public IDialogService? DialogService { get; private set; }
 
-    public IDownloadService? DownloadService { get; set; }
+    public IDownloadService? DownloadService { get; private set; }
 
-    public IBrowsingHistoryService? BrowsingHistoryService { get; set; }
+    public IBrowsingHistoryService? BrowsingHistoryService { get; private set; }
 
-    public PermissionMemoryStore? PermissionStore { get; set; }
+    public PermissionMemoryStore? PermissionStore { get; private set; }
 
-    public UserScriptService? UserScriptService { get; set; }
+    public UserScriptService? UserScriptService { get; private set; }
 
-    public UserScriptBridge? UserScriptBridge { get; set; }
+    public UserScriptBridge? UserScriptBridge { get; private set; }
 
-    public BrowserOptions? BrowserOptions { get; set; }
+    public BrowserOptions? BrowserOptions { get; private set; }
 
-    public ITabHostCallbacks? TabHostCallbacks { get; set; }
+    public ITabHostCallbacks? TabHostCallbacks { get; private set; }
+
+    /// <summary>
+    /// Injects host dependencies from <see cref="MainWindow.RegisterHost"/> (DI composition root).
+    /// Must run before WebView2 lifecycle methods use services.
+    /// </summary>
+    public void ConfigureHost(
+        IDialogService dialogService,
+        IDownloadService downloadService,
+        IBrowsingHistoryService browsingHistoryService,
+        PermissionMemoryStore permissionStore,
+        UserScriptService userScriptService,
+        UserScriptBridge userScriptBridge,
+        BrowserOptions browserOptions,
+        ITabHostCallbacks tabHostCallbacks)
+    {
+        ArgumentNullException.ThrowIfNull(dialogService);
+        ArgumentNullException.ThrowIfNull(downloadService);
+        ArgumentNullException.ThrowIfNull(browsingHistoryService);
+        ArgumentNullException.ThrowIfNull(permissionStore);
+        ArgumentNullException.ThrowIfNull(userScriptService);
+        ArgumentNullException.ThrowIfNull(userScriptBridge);
+        ArgumentNullException.ThrowIfNull(browserOptions);
+        ArgumentNullException.ThrowIfNull(tabHostCallbacks);
+
+        DialogService = dialogService;
+        DownloadService = downloadService;
+        BrowsingHistoryService = browsingHistoryService;
+        PermissionStore = permissionStore;
+        UserScriptService = userScriptService;
+        UserScriptBridge = userScriptBridge;
+        BrowserOptions = browserOptions;
+        TabHostCallbacks = tabHostCallbacks;
+        _isHostConfigured = true;
+
+        if (IsLoaded)
+            TryBeginHostLifecycle();
+    }
 
     public CoreWebView2? CoreWebView2 => webView.CoreWebView2;
 
@@ -94,7 +132,7 @@ public partial class TabWebViewHost : UserControl, ITabWebViewHost
 
     private static void OnEnvironmentChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        if (d is TabWebViewHost host && host.IsLoaded)
+        if (d is TabWebViewHost host && host.IsLoaded && host._isHostConfigured)
             _ = host.InitializeAsync();
     }
 
@@ -124,24 +162,32 @@ public partial class TabWebViewHost : UserControl, ITabWebViewHost
             newTab.ShowFindRequested += OnShowFindRequested;
         }
 
-        if (IsLoaded && Environment != null && newTab != null && !newTab.IsSleeping)
+        if (!_isHostConfigured || !IsLoaded)
+            return;
+
+        if (Environment != null && newTab != null && !newTab.IsSleeping)
             _ = InitializeAsync();
-        else if (IsLoaded && newTab is { IsSelected: true } && (newTab.IsSleeping || newTab.IsLightSuspended))
+        else if (newTab is { IsSelected: true } && (newTab.IsSleeping || newTab.IsLightSuspended))
             _ = WakeAsync();
     }
 
     private void OnTabPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName != nameof(BrowserTabViewModel.IsSelected) || Tab == null || !Tab.IsSelected)
+        if (!_isHostConfigured
+            || e.PropertyName != nameof(BrowserTabViewModel.IsSelected)
+            || Tab == null
+            || !Tab.IsSelected)
             return;
 
         if ((Tab.IsSleeping || Tab.IsLightSuspended) && IsLoaded)
             _ = WakeAsync();
     }
 
-    private async void UserControl_Loaded(object sender, RoutedEventArgs e)
+    private void UserControl_Loaded(object sender, RoutedEventArgs e) => TryBeginHostLifecycle();
+
+    private async void TryBeginHostLifecycle()
     {
-        if (Tab == null)
+        if (!_isHostConfigured || Tab == null)
             return;
 
         if (Tab.IsSleeping || Tab.IsLightSuspended)
@@ -257,7 +303,7 @@ public partial class TabWebViewHost : UserControl, ITabWebViewHost
 
     public async Task WakeAsync()
     {
-        if (_hasShutdown || _isPermanentClose || Tab == null)
+        if (!_isHostConfigured || _hasShutdown || _isPermanentClose || Tab == null)
             return;
 
         if (Tab.IsLightSuspended && !Tab.IsSleeping && webView.CoreWebView2 != null)
@@ -297,7 +343,7 @@ public partial class TabWebViewHost : UserControl, ITabWebViewHost
 
     private async Task InitializeAsync()
     {
-        if (Tab == null || Environment == null || _isPermanentClose)
+        if (!_isHostConfigured || Tab == null || Environment == null || _isPermanentClose)
             return;
 
         if (Tab.IsWebViewReady && webView.CoreWebView2 != null)

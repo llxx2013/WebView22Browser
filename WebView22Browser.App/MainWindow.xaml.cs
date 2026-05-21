@@ -252,23 +252,21 @@ public partial class MainWindow : Window
 
     public void RegisterHost(TabWebViewHost host)
     {
-        host.DialogService = _dialogService;
-        host.DownloadService = _downloadService;
-        host.BrowsingHistoryService = _browsingHistoryService;
-        host.PermissionStore = _permissionStore;
-        host.UserScriptService = _userScriptService;
-        host.UserScriptBridge = _userScriptBridge;
-        host.BrowserOptions = _browserOptions;
-        host.TabHostCallbacks = _viewModel;
+        host.ConfigureHost(
+            _dialogService,
+            _downloadService,
+            _browsingHistoryService,
+            _permissionStore,
+            _userScriptService,
+            _userScriptBridge,
+            _browserOptions,
+            _viewModel);
         host.ProfileReady += OnHostProfileReady;
 
         if (host.Tab == null)
             return;
 
         _tabHostService.Register(host.Tab.TabId, host);
-
-        if (host.Tab.IsSelected && (host.Tab.IsSleeping || host.Tab.IsLightSuspended))
-            _ = host.WakeAsync();
     }
 
     private async void OnHostProfileReady(object? sender, CoreWebView2Profile profile)
