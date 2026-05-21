@@ -13,21 +13,21 @@
 | 路径 | 内容 | 实现 |
 | --- | --- | --- |
 | `UserData\Profile\` | WebView2 用户数据（Cookie、缓存、Session、已安装扩展） | [WebView2EnvironmentService](../WebView22Browser.App/Services/WebView2EnvironmentService.cs) |
-| `favorites.json` | 收藏夹列表 | `JsonFavoritesStore` |
-| `extensions.json` | 已安装扩展的源目录注册表（启动重装） | `JsonExtensionSourceStore` |
-| `permissions.json` | 站点权限记忆（URI + 权限类型） | [PermissionMemoryStore](../WebView22Browser.App/Services/PermissionMemoryStore.cs) |
-| `download-history.json` | 下载历史（默认上限 200 条，可在设置页调整） | `JsonDownloadHistoryStore` |
-| `browsing-history.json` | 浏览访问历史（默认上限 2000 条） | `JsonBrowsingHistoryStore` |
-| `userscripts.json` | 用户脚本元数据与代码 | `JsonUserScriptStore` |
-| `tabs-session.json` | 标签列表、选中标签、每标签 URL 历史栈 | `JsonTabSessionStore`（原子替换写入） |
-| `user-settings.json` | 应用内设置页覆盖项 | `JsonUserSettingsStore` |
-| `gm-storage/<scriptId>.json` | 各脚本的 GM 键值存储 | `JsonGmStorageStore` |
+| `favorites.json` | 收藏夹列表 | `JsonFavoritesStore`（原子写） |
+| `extensions.json` | 已安装扩展的源目录注册表（启动重装） | `JsonExtensionSourceStore`（原子写） |
+| `permissions.json` | 站点权限记忆（URI + 权限类型） | [PermissionMemoryStore](../WebView22Browser.App/Services/PermissionMemoryStore.cs)（原子写） |
+| `download-history.json` | 下载历史（默认上限 200 条，可在设置页调整） | `JsonDownloadHistoryStore`（原子写） |
+| `browsing-history.json` | 浏览访问历史（默认上限 2000 条） | `JsonBrowsingHistoryStore`（原子写） |
+| `userscripts.json` | 用户脚本元数据与代码 | `JsonUserScriptStore`（原子写） |
+| `tabs-session.json` | 标签列表、选中标签、每标签 URL 历史栈 | `JsonTabSessionStore`（原子写） |
+| `user-settings.json` | 应用内设置页覆盖项 | `JsonUserSettingsStore`（原子写） |
+| `gm-storage/<scriptId>.json` | 各脚本的 GM 键值存储 | `JsonGmStorageStore`（原子写） |
 
 WebView2 环境创建时启用 `AreBrowserExtensionsEnabled = true`。
 
 ## 写入约定
 
-- **会话与多数 JSON 存储**：通过 Core 层 Store 写入；`tabs-session.json` 使用原子替换，降低崩溃时损坏风险。
+- **侧栏与用户数据 JSON**：上表所列 `*.json` 均经 [JsonFileStoreBase](../WebView22Browser.Core/Stores/JsonFileStoreBase.cs)（继承类调用实例 `WriteAtomicAsync`，或等价调用静态 `JsonFileStoreBase.WriteAtomicAsync`）以 **临时文件 + 同名替换** 落盘，降低进程崩溃时半写损坏风险。
 - **权限记忆**：首次弹窗结果约 3 秒后批量写入 `permissions.json`（见 [security-and-permissions.md](features/security-and-permissions.md)）。
 - **GM 存储**：写入先更新内存，再异步落盘；异常退出可能导致未持久化（见 [user-scripts.md](features/user-scripts.md)）。
 

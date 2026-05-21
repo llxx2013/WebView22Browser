@@ -70,7 +70,7 @@
 | --- | --- | --- |
 | ~~消除 `TabWebViewHost` 中的 Service Locator~~（**S2 已完成**） | 已改为 `ConfigureHost` + `ITabHostCallbacks`；见 [architecture.md](../architecture.md) | 可测性、依赖清晰 |
 | 为 Host 定义窄接口回调 | 如 `ITabReadyNotifier`、`IBrowserOptionsAccessor`，经 `MainWindow.RegisterHost` 注入 | 与 VM 解耦，便于后续拆分文件 |
-| 统一 JSON 持久化基类 | 仅 [JsonTabSessionStore](../../WebView22Browser.Core/Stores/JsonTabSessionStore.cs)、[JsonUserSettingsStore](../../WebView22Browser.Core/Stores/JsonUserSettingsStore.cs) 原子写；其余 Store 直接 `File.Create` | 降低崩溃时 JSON 损坏风险 |
+| ~~统一 JSON 持久化基类~~（**S1 已完成**） | 侧栏与用户数据 JSON 均已 **temp + replace** 原子写入：`JsonFileStoreBase` 子类（[JsonFavoritesStore](../../WebView22Browser.Core/Stores/JsonFavoritesStore.cs)、[JsonExtensionSourceStore](../../WebView22Browser.Core/Stores/JsonExtensionSourceStore.cs)、[JsonUserScriptStore](../../WebView22Browser.Core/Stores/JsonUserScriptStore.cs)、[JsonDownloadHistoryStore](../../WebView22Browser.Core/Stores/JsonDownloadHistoryStore.cs)、[JsonBrowsingHistoryStore](../../WebView22Browser.Core/Stores/JsonBrowsingHistoryStore.cs)）+ [JsonTabSessionStore](../../WebView22Browser.Core/Stores/JsonTabSessionStore.cs) / [JsonUserSettingsStore](../../WebView22Browser.Core/Stores/JsonUserSettingsStore.cs) / [JsonGmStorageStore](../../WebView22Browser.Core/Stores/JsonGmStorageStore.cs) / [PermissionMemoryStore](../../WebView22Browser.App/Services/PermissionMemoryStore.cs) 调用 `JsonFileStoreBase.WriteAtomicAsync` | 降低崩溃时 JSON 损坏风险 |
 | `ITabHostService` 不暴露 WPF 类型 | 接口返回 [TabWebViewHost](../../WebView22Browser.App/Controls/TabWebViewHost.xaml.cs) | Linux 上 `MainViewModelTests` 可用 Fake；App/Core 边界更清晰 |
 | 收敛 `async void` | `TabSleepService.OnTimerTick`、`App.OnStartup`、多处 Loaded 事件 | 减少未观察异常与定时器重入 |
 
@@ -119,7 +119,7 @@ Chrome Web Store、Tampermonkey 级隔离、完整 Travellog / SPA 状态恢复�
 
 ### 高优先级（Alpha 收尾应处理）
 
-1. **JSON 写入非原子** — `favorites`、`extensions`、`userscripts`、`permissions`、`download-history`、`gm-storage` 等；崩溃可能半写损坏。
+1. ~~**JSON 写入非原子**~~（**S1 已修复**）— 历史风险；现行实现见 [data-storage.md](../data-storage.md)「写入约定」与各 `Json*Store` / `PermissionMemoryStore`。
 2. **`PermissionMemoryStore` 静默失败** — 防抖 flush 存在空 `catch (Exception)`。
 3. **`TabWebViewHost` 无自动化测试** — 最大回归盲区（见 [testing.md](testing.md)）。
 4. **Fire-and-forget 异步** — `_ = WakeAsync` / GM 消息等，异常可能未记录。
@@ -304,3 +304,4 @@ flowchart LR
 | 2026-05-20 | S1 完成：`JsonFileStoreBase`、原子 JSON 写、权限/会话/GM 失败状态栏提示 |
 | 2026-05-20 | S2 完成：`ITabWebViewHost`/`ITabHostCallbacks`、`FakeTabWebViewHost`、`TabSleepCycleProcessor` 单测、Linux 全绿 |
 | 2026-05-20 | S3 完成（除标签发布）：关于/版本、标签提示、清除浏览数据、`GM_openInTab`、`Ctrl+Shift+R`、`CHANGELOG.md` |
+| 2026-05-21 | 文档：`alpha-wrap-up` P0/风险 §4 与 `data-storage` 对齐 S1 后各 JSON Store 原子写现状 |
