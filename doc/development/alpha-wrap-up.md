@@ -41,7 +41,7 @@
 
 | 文件 | 约行数 | 说明 |
 | --- | ---: | --- |
-| [TabWebViewHost.xaml.cs](../../WebView22Browser.App/Controls/TabWebViewHost.xaml.cs) | ~1100 | WebView2 生命周期、安全、休眠、历史、注入（**最大集成面，无单测**） |
+| `Controls/TabWebViewHost`（partial） | ~1200 合计 | 已按生命周期 / 导航历史 / 安全权限 / 下载手势拆分；**最大集成面，无单测** |
 | [UserScriptBootstrapBuilder.cs](../../WebView22Browser.Core/Services/UserScriptBootstrapBuilder.cs) | ~560 | 注入脚本生成 |
 | [MainViewModel.cs](../../WebView22Browser.App/ViewModels/MainViewModel.cs) | ~390 | 标签与导航协调中枢 |
 
@@ -78,7 +78,7 @@
 
 | 建议 | 说明 |
 | --- | --- |
-| 拆分 `TabWebViewHost` | 按生命周期 / 导航历史 / 安全权限 / 下载手势拆为 partial 或 handler 类 |
+| ~~拆分 `TabWebViewHost`~~（**已完成**） | `TabWebViewHost.{Lifecycle,NavigationHistory,Security,GesturesAndDownloads}.cs` partial |
 | DI 模块化 | `App.xaml.cs` 注册拆为 `AddBrowserCore()` / `AddUserScripts()` 等扩展方法 |
 | 核心服务补接口 | `UserScriptService`、`TabSleepService`、`PermissionMemoryStore` 等目前为具体 Singleton |
 | Json Store 模板化 | `Load` / `Save` / `Clear` + 可选 `SemaphoreSlim` + `WriteAtomicAsync` 一套实现 |
@@ -239,7 +239,7 @@ flowchart LR
 
 ### 不挡 Alpha 标签（进 Beta backlog）
 
-- `TabWebViewHost` 文件拆分
+- ~~`TabWebViewHost` 文件拆分~~（已完成）
 - E2E / WebView2 集成测试
 - Chrome Web Store、隔离世界、GM XHR 完整 Tampermonkey 兼容
 
@@ -247,7 +247,7 @@ flowchart LR
 
 ## 七、Alpha 之后 → Beta 首批（规划参考）
 
-1. 拆分 `TabWebViewHost`（在 S2 注入接口就绪后）
+1. ~~拆分 `TabWebViewHost`~~（已完成；见 `Controls/TabWebViewHost.*.cs`）
 2. GM XHR `onprogress` 与可选 `responseType` 扩展
 3. 设置项：DevTools 默认策略、证书说明文案
 4. 最小 smoke（可选）：启动 + 单 URL 导航（Playwright 或 WinAppDriver 等）
@@ -305,3 +305,4 @@ flowchart LR
 | 2026-05-20 | S2 完成：`ITabWebViewHost`/`ITabHostCallbacks`、`FakeTabWebViewHost`、`TabSleepCycleProcessor` 单测、Linux 全绿 |
 | 2026-05-20 | S3 完成（除标签发布）：关于/版本、标签提示、清除浏览数据、`GM_openInTab`、`Ctrl+Shift+R`、`CHANGELOG.md` |
 | 2026-05-21 | 文档：`alpha-wrap-up` P0/风险 §4 与 `data-storage` 对齐 S1 后各 JSON Store 原子写现状 |
+| 2026-05-21 | P1：`TabWebViewHost` 拆为 partial（Lifecycle / NavigationHistory / Security / GesturesAndDownloads） |
