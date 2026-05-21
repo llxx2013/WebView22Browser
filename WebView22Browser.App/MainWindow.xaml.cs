@@ -10,6 +10,7 @@ using WebView22Browser.App.Controls;
 using WebView22Browser.App.Services;
 using WebView22Browser.App.ViewModels;
 using WebView22Browser.Core;
+using WebView22Browser.Core.Async;
 
 namespace WebView22Browser.App;
 
@@ -78,7 +79,10 @@ public partial class MainWindow : Window
 
     public CoreWebView2Environment? WebViewEnvironment { get; private set; }
 
-    private async void Window_Loaded(object sender, RoutedEventArgs e)
+    private void Window_Loaded(object sender, RoutedEventArgs e) =>
+        FireAndForget.Run(() => Window_LoadedAsync(sender, e));
+
+    private async Task Window_LoadedAsync(object sender, RoutedEventArgs e)
     {
         _startupCts = new CancellationTokenSource();
         var token = _startupCts.Token;
@@ -129,7 +133,10 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void Window_Closing(object? sender, CancelEventArgs e)
+    private void Window_Closing(object? sender, CancelEventArgs e) =>
+        FireAndForget.Run(() => Window_ClosingAsync(sender, e), ReportClosingFailure);
+
+    private async Task Window_ClosingAsync(object? sender, CancelEventArgs e)
     {
         _isClosing = true;
         _tabSleepService.Stop();
@@ -148,6 +155,9 @@ public partial class MainWindow : Window
 
         await _permissionStore.DisposeAsync();
     }
+
+    private void ReportClosingFailure(Exception ex) =>
+        System.Diagnostics.Debug.WriteLine($"[WebView22Browser] Window closing failed: {ex}");
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
@@ -269,7 +279,10 @@ public partial class MainWindow : Window
         _tabHostService.Register(host.Tab.TabId, host);
     }
 
-    private async void OnHostProfileReady(object? sender, CoreWebView2Profile profile)
+    private void OnHostProfileReady(object? sender, CoreWebView2Profile profile) =>
+        FireAndForget.Run(() => OnHostProfileReadyAsync(sender, profile));
+
+    private async Task OnHostProfileReadyAsync(object? sender, CoreWebView2Profile profile)
     {
         if (sender is TabWebViewHost host)
             host.ProfileReady -= OnHostProfileReady;

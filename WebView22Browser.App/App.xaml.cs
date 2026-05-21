@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using WebView22Browser.App.Services;
 using WebView22Browser.App.ViewModels;
 using WebView22Browser.Core;
+using WebView22Browser.Core.Async;
 using WebView22Browser.Core.Models;
 using WebView22Browser.Core.Services;
 using WebView22Browser.Core.Stores;
@@ -16,34 +17,37 @@ public partial class App : Application
 {
     public static IServiceProvider Services { get; private set; } = null!;
 
-    protected override async void OnStartup(StartupEventArgs e)
+    protected override void OnStartup(StartupEventArgs e)
     {
-        try
-        {
-            Services = await ConfigureServicesAsync();
-            var mainViewModel = Services.GetRequiredService<MainViewModel>();
-            Services.GetRequiredService<WpfGmTabService>()
-                .SetOpenHandler((url, activate) => mainViewModel.OpenNewTab(url, activate));
+        FireAndForget.Run(() => OnStartupAsync(e), HandleStartupFailure);
+    }
 
-            var favoritesViewModel = Services.GetRequiredService<FavoritesViewModel>();
-            favoritesViewModel.NavigateToFavorite = item => mainViewModel.OpenFavoriteCommand.Execute(item);
+    private async Task OnStartupAsync(StartupEventArgs e)
+    {
+        Services = await ConfigureServicesAsync();
+        var mainViewModel = Services.GetRequiredService<MainViewModel>();
+        Services.GetRequiredService<WpfGmTabService>()
+            .SetOpenHandler((url, activate) => mainViewModel.OpenNewTab(url, activate));
 
-            var historyViewModel = Services.GetRequiredService<HistoryViewModel>();
-            historyViewModel.NavigateToUrl = mainViewModel.NavigateToUrl;
+        var favoritesViewModel = Services.GetRequiredService<FavoritesViewModel>();
+        favoritesViewModel.NavigateToFavorite = item => mainViewModel.OpenFavoriteCommand.Execute(item);
 
-            var mainWindow = Services.GetRequiredService<MainWindow>();
-            mainWindow.Show();
-            base.OnStartup(e);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(
-                $"无法启动浏览器：{ex.Message}",
-                "启动失败",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
-            Shutdown(1);
-        }
+        var historyViewModel = Services.GetRequiredService<HistoryViewModel>();
+        historyViewModel.NavigateToUrl = mainViewModel.NavigateToUrl;
+
+        var mainWindow = Services.GetRequiredService<MainWindow>();
+        mainWindow.Show();
+        base.OnStartup(e);
+    }
+
+    private void HandleStartupFailure(Exception ex)
+    {
+        MessageBox.Show(
+            $"无法启动浏览器：{ex.Message}",
+            "启动失败",
+            MessageBoxButton.OK,
+            MessageBoxImage.Error);
+        Shutdown(1);
     }
 
     private static async Task<IServiceProvider> ConfigureServicesAsync()

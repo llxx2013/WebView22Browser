@@ -11,6 +11,7 @@ using WebView22Browser.App.Services;
 using WebView22Browser.App.ViewModels;
 using WebView22Browser.App.WebView2;
 using WebView22Browser.Core;
+using WebView22Browser.Core.Async;
 using WebView22Browser.Core.Models;
 using WebView22Browser.Core.Services;
 
@@ -115,7 +116,7 @@ public partial class TabWebViewHost : UserControl, ITabWebViewHost
         _isHostConfigured = true;
 
         if (IsLoaded)
-            TryBeginHostLifecycle();
+            FireAndForget.Run(TryBeginHostLifecycleAsync, ReportHostLifecycleFailure);
     }
 
     public CoreWebView2? CoreWebView2 => webView.CoreWebView2;
@@ -183,9 +184,10 @@ public partial class TabWebViewHost : UserControl, ITabWebViewHost
             _ = WakeAsync();
     }
 
-    private void UserControl_Loaded(object sender, RoutedEventArgs e) => TryBeginHostLifecycle();
+    private void UserControl_Loaded(object sender, RoutedEventArgs e) =>
+        FireAndForget.Run(TryBeginHostLifecycleAsync, ReportHostLifecycleFailure);
 
-    private async void TryBeginHostLifecycle()
+    private async Task TryBeginHostLifecycleAsync()
     {
         if (!_isHostConfigured || Tab == null)
             return;
@@ -202,6 +204,9 @@ public partial class TabWebViewHost : UserControl, ITabWebViewHost
         if (Environment != null)
             await InitializeAsync();
     }
+
+    private void ReportHostLifecycleFailure(Exception ex) =>
+        Trace.WriteLine($"[WebView22Browser] Host lifecycle failed: {ex.Message}");
 
     private void UserControl_Unloaded(object sender, RoutedEventArgs e)
     {
@@ -725,7 +730,10 @@ public partial class TabWebViewHost : UserControl, ITabWebViewHost
 
     private void OnOpenDevToolsRequested() => webView.CoreWebView2?.OpenDevToolsWindow();
 
-    private async void OnShowFindRequested()
+    private void OnShowFindRequested() =>
+        FireAndForget.Run(OnShowFindRequestedAsync);
+
+    private async Task OnShowFindRequestedAsync()
     {
         if (_isFindPending || _hasShutdown || _isPermanentClose || Tab == null)
             return;
@@ -1031,7 +1039,10 @@ public partial class TabWebViewHost : UserControl, ITabWebViewHost
         Tab.SecurityState = SecurityStateDevToolsParser.FromUriScheme(webView.Source?.ToString());
     }
 
-    private async void OnPermissionRequested(object? sender, CoreWebView2PermissionRequestedEventArgs e)
+    private void OnPermissionRequested(object? sender, CoreWebView2PermissionRequestedEventArgs e) =>
+        FireAndForget.Run(() => OnPermissionRequestedAsync(sender, e), ReportPermissionFailure);
+
+    private async Task OnPermissionRequestedAsync(object? sender, CoreWebView2PermissionRequestedEventArgs e)
     {
         if (PermissionStore != null &&
             PermissionStore.TryGet(e.Uri, e.PermissionKind, out var remembered))
@@ -1052,6 +1063,9 @@ public partial class TabWebViewHost : UserControl, ITabWebViewHost
         if (PermissionStore != null)
             await PermissionStore.SetAsync(e.Uri, e.PermissionKind, e.State);
     }
+
+    private void ReportPermissionFailure(Exception ex) =>
+        Trace.WriteLine($"[WebView22Browser] Permission request failed: {ex.Message}");
 
     private void OnProcessFailed(object? sender, CoreWebView2ProcessFailedEventArgs e)
     {
