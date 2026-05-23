@@ -32,7 +32,7 @@ WebView22Browser.sln
 | 目录 / 文件 | 职责 |
 | --- | --- |
 | `ViewModels/` | `MainViewModel`、`BrowserTabViewModel`、`FavoritesViewModel`、`ExtensionsViewModel`、`UserScriptsViewModel`、`DownloadsViewModel`、`HistoryViewModel`、`SettingsViewModel` 等 |
-| `Controls/TabWebViewHost` | 单标签 WebView2 生命周期、事件、进程恢复、查找、休眠唤醒 |
+| `Controls/TabWebViewHost` | 单标签 WebView2（`partial`：`Lifecycle` / `NavigationHistory` / `Security` / `GesturesAndDownloads` + 核心 xaml.cs） |
 | `Services/` | 环境、扩展、权限、下载、标签宿主、休眠、用户脚本与 GM |
 | `Views/` | 侧栏、下载底栏、历史/设置全屏页 |
 | `WebView2/` | 错误映射、右键菜单、新标签手势 |
